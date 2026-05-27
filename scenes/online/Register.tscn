@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://dpt7mylamquhn"]
+
+[ext_resource type="Script" uid="uid://boxqgv4ldfeg8" path="res://scripts/online/register.gd" id="1_4bgn8"]
+
+[node name="Register" type="Control" unique_id=824940193]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_4bgn8")

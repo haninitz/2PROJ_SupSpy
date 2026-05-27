@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://k0g36uc601ud"]
+
+[ext_resource type="Script" uid="uid://o6eb3wakya7e" path="res://scripts/online/salle_attente.gd" id="1_u3t7e"]
+
+[node name="SalleAttente" type="Control" unique_id=1032534030]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_u3t7e")

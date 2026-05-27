@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://c5p2iv4nhyoee"]
+
+[ext_resource type="Script" uid="uid://ccxy8bxeu5xim" path="res://scripts/units/Fantassin.gd" id="1_1pjsb"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_5xatw"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_kuvq7"]
+radius = 40.0
+
+[node name="Fantassin" type="CharacterBody2D" unique_id=2027463266]
+script = ExtResource("1_1pjsb")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1466157300]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=919498849]
+shape = SubResource("CapsuleShape2D_5xatw")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=1569775483]
+
+[node name="AttckeTimer" type="Timer" parent="." unique_id=2034343436]
+
+[node name="RangeArea" type="Area2D" parent="." unique_id=879132680]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=2103559748]
+shape = SubResource("CircleShape2D_kuvq7")

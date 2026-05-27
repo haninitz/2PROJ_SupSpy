@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://dafgendetxbn1"]
+
+[ext_resource type="Script" uid="uid://ddr03aphon0jw" path="res://scripts/units/Antiblindage.gd" id="1_nb1js"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_17vjx"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_fqjn5"]
+radius = 60.0
+
+[node name="AntiBlindage" type="CharacterBody2D" unique_id=1496931368]
+script = ExtResource("1_nb1js")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1678427663]
+shape = SubResource("CapsuleShape2D_17vjx")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=691852174]
+
+[node name="AttackTimer" type="Timer" parent="." unique_id=1470707620]
+wait_time = 1.2
+
+[node name="RangeArea" type="Area2D" parent="." unique_id=765584615]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=258239843]
+shape = SubResource("CircleShape2D_fqjn5")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=35891123]

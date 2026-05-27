@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://bfnnlflqa5pqy"]
+
+[ext_resource type="Script" uid="uid://dfyqtevacx0qr" path="res://scripts/online/liste_rooms.gd" id="1_f5aka"]
+
+[node name="ListeRooms" type="Control" unique_id=570979018]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_f5aka")

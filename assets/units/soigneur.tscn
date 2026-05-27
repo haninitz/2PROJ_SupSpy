@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://b3x3inbascfp0"]
+
+[ext_resource type="Script" uid="uid://okutlgl12lu5" path="res://scripts/units/Soigneur.gd" id="1_ptnda"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_q3nu0"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ptnda"]
+radius = 0.01
+
+[node name="Soigneur" type="CharacterBody2D" unique_id=1676996802]
+script = ExtResource("1_ptnda")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=444062310]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1117126876]
+shape = SubResource("CapsuleShape2D_q3nu0")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=64156125]
+
+[node name="AttackTimer" type="Timer" parent="." unique_id=704349613]
+wait_time = 99.0
+
+[node name="HealTimer" type="Timer" parent="." unique_id=492210683]
+
+[node name="HealTickTimer" type="Timer" parent="." unique_id=742086115]
+
+[node name="CooldownTimer" type="Timer" parent="." unique_id=2063828138]
+
+[node name="RangeArea" type="Area2D" parent="." unique_id=1034242434]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=555351906]
+shape = SubResource("CircleShape2D_ptnda")

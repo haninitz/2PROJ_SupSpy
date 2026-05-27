@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://cgb2t5yrjf8k7"]
+
+[ext_resource type="Script" uid="uid://bbq2y4b0l2gcc" path="res://scripts/Camp.gd" id="1_reiu6"]
+[ext_resource type="Script" uid="uid://cg647u43wkph8" path="res://scripts/Tourelle.gd" id="2_n7chk"]
+
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_yj377"]
+radius = 42.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_uvkgl"]
+radius = 150.0
+
+[node name="CampBase" type="Node2D" unique_id=2058858772]
+script = ExtResource("1_reiu6")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=67550208]
+shape = SubResource("CircleShape2D_yj377")
+
+[node name="Tourelle" type="Node2D" parent="." unique_id=834013384]
+script = ExtResource("2_n7chk")
+
+[node name="AttackTimer" type="Timer" parent="Tourelle" unique_id=966365615]
+wait_time = 2.0
+
+[node name="RangeArea" type="Area2D" parent="Tourelle" unique_id=1918681297]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Tourelle/RangeArea" unique_id=1886741691]
+shape = SubResource("CircleShape2D_uvkgl")

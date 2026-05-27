@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://xu3ywrv31epp"]
+
+[ext_resource type="Script" uid="uid://cwnbp5amllciy" path="res://scripts/online/login.gd" id="1_waxm0"]
+
+[node name="login" type="Control" unique_id=53186645]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_waxm0")

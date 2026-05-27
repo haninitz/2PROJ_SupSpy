@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://cktqll7de3fnu"]
+
+[ext_resource type="Script" uid="uid://v1nkea6gr4f8" path="res://scripts/units/Lourd.gd" id="1_y6v74"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_ar1t5"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_uuw6c"]
+radius = 80.0
+
+[node name="Lourd" type="CharacterBody2D" unique_id=874923009]
+script = ExtResource("1_y6v74")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=59944404]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=419519522]
+shape = SubResource("CapsuleShape2D_ar1t5")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=175469356]
+
+[node name="AttackTimer" type="Timer" parent="." unique_id=133796756]
+wait_time = 2.0
+
+[node name="RangeArea" type="Area2D" parent="." unique_id=239528422]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=777756548]
+shape = SubResource("CircleShape2D_uuw6c")

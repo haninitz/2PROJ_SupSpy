@@ -1,0 +1,43 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="2PROJ_Hanitea"
+run/main_scene="uid://217bego206hy"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameManager="*uid://cyy8a2yv6i6p0"
+MapDefs="*uid://g47bjbj585sl"
+UnitDefs="*uid://41sr3tu3qeim"
+Sound="*uid://conqrnidn8r2a"
+Lang="*uid://cfukrkyo4n1nx"
+GameConfig="*uid://b0nuiqjdw5mef"
+NetworkManager="*uid://iojwwur0tuch"
+Matchmaker="*uid://bms3lvsxwuqk6"
+RoomManager="*uid://1yqm66fc62pl"
+SceneLoader="*uid://bgf8xu4vq1018"
+UIUtils="*uid://epbg8wv4dqs4"
+Combat="*uid://ba1nfq7cn400f"
+
+[display]
+
+window/stretch/mode="canvas_items"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"
