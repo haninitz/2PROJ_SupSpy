@@ -1,11 +1,11 @@
 extends Node
-
+ 
 signal player_list_updated(room_id: String, data: Array)
 signal room_full(room_id: String)
-
+ 
 var rooms:       Dictionary = {}
 var player_room: Dictionary = {}
-
+ 
 @rpc("any_peer", "reliable")
 func request_join_room(room_id: String, mode: String,
 		format: String, diff: String, map: String, player_name: String) -> void:
@@ -13,59 +13,40 @@ func request_join_room(room_id: String, mode: String,
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
 	_register_player(sender, room_id, mode, format, diff, map, player_name)
-
+ 
 func join_room_local(room_id: String, mode: String,
 		format: String, diff: String, map: String, player_name: String) -> void:
 	_register_player(1, room_id, mode, format, diff, map, player_name)
-
+ 
 func _register_player(sender: int, room_id: String, mode: String,
 		format: String, diff: String, map: String, player_name: String) -> void:
-
 	if not rooms.has(room_id):
 		_create_room(room_id, mode, format, diff, map)
-
 	var room:  Dictionary = rooms[room_id]
 	var max_p: int        = _format_to_max(room.format)
-
 	if room.players.size() >= max_p:
 		if sender != 1:
 			_notify_full.rpc_id(sender, room_id)
 		return
-
 	var join_order: int = room.players.size()
 	var team: String    = "a" if join_order % 2 == 0 else "b"
-
 	room.players[sender] = {
-		"id":         sender,
-		"name":       player_name,
-		"team":       team,
-		"join_order": join_order,
-		"ready":      false
+		"id": sender, "name": player_name, "team": team,
+		"join_order": join_order, "ready": false
 	}
 	player_room[sender] = room_id
 	clear_client_timeout(sender)
-
-	print("[RoomManager] Joueur %d '%s' → room '%s' (team %s, ordre %d)" \
+	print("[RoomManager] Joueur %d '%s' -> room '%s' (team %s, ordre %d)" \
 		% [sender, player_name, room_id, team, join_order])
-
 	if sender == 1:
-		GameConfig.room_name = room_id
-		GameConfig.mode      = mode
-		GameConfig.format    = format
-		GameConfig.diff      = diff
-		GameConfig.map       = map
-		GameConfig.is_host   = true
+		GameConfig.room_name = room_id; GameConfig.mode = mode
+		GameConfig.format = format; GameConfig.diff = diff
+		GameConfig.map = map; GameConfig.is_host = true
 	else:
-		_confirm_join.rpc_id(sender,
-			room_id, team, join_order,
-			room.mode, room.format, room.diff, room.map
-		)
-
+		_confirm_join.rpc_id(sender, room_id, team, join_order,
+			room.mode, room.format, room.diff, room.map)
 	_broadcast_list(room_id)
-
-	# ─ SUPPRIMÉ : plus de lancement automatique quand la room est pleine ─
-	# C'est l'hôte qui lance manuellement depuis SalleAttente via _start_game()
-
+ 
 @rpc("any_peer", "reliable")
 func set_player_ready(room_id: String, is_ready: bool) -> void:
 	if not multiplayer.is_server():
@@ -74,7 +55,7 @@ func set_player_ready(room_id: String, is_ready: bool) -> void:
 	if rooms.has(room_id) and rooms[room_id].players.has(sender):
 		rooms[room_id].players[sender]["ready"] = is_ready
 	_broadcast_list(room_id)
-
+ 
 func remove_player(peer_id: int) -> void:
 	if not player_room.has(peer_id):
 		return
@@ -85,178 +66,136 @@ func remove_player(peer_id: int) -> void:
 		_broadcast_list(rid)
 		if rooms[rid].players.is_empty():
 			rooms.erase(rid)
-			# Supprimer du matchmaker
 			Matchmaker.delete_room(rid)
-			print("[RoomManager] Room '%s' detruite et supprimee du matchmaker" % rid)
 	player_room.erase(peer_id)
-
+ 
 func _create_room(room_id: String, mode: String, format: String,
 		diff: String, map: String) -> void:
 	rooms[room_id] = {
-		"id":      room_id,
-		"mode":    mode,
-		"format":  format,
-		"diff":    diff,
-		"map":     map,
-		"players": {}
+		"id": room_id, "mode": mode, "format": format,
+		"diff": diff, "map": map, "players": {}
 	}
-	print("[RoomManager] Room '%s' créée" % room_id)
-
+	print("[RoomManager] Room '%s' creee" % room_id)
+ 
 func _start_game(room_id: String) -> void:
 	if not rooms.has(room_id):
 		return
-
 	Matchmaker.update_room(room_id, rooms[room_id].players.size(), true)
-	var room: Dictionary = rooms[room_id]
-	print("[RoomManager]  Lancement room '%s'" % room_id)
-
+	var room: Dictionary  = rooms[room_id]
 	var players_array: Array = room.players.values()
-
-	# 1. Preparer le GameConfig de l hote
-	GameConfig.mode   = room.mode
-	GameConfig.format = room.format
-	GameConfig.diff   = room.diff
-	GameConfig.map    = room.map
+	print("[RoomManager] Lancement room '%s'" % room_id)
+	GameConfig.mode = room.mode; GameConfig.format = room.format
+	GameConfig.diff = room.diff; GameConfig.map    = room.map
 	GameConfig.players.clear()
 	for p in players_array:
 		GameConfig.players[p.id] = p
-
-	# 2. Envoyer les RPC a TOUS les clients d abord
 	for pid in room.players:
 		if pid != 1:
-			_do_start.rpc_id(pid,
-				room.mode, room.format, room.diff,
-				room.map, players_array
-			)
-
-	# 3. Attendre 2 frames pour que les paquets soient envoyes,
-	#    puis l hote change de scene
+			_do_start.rpc_id(pid, room.mode, room.format, room.diff, room.map, players_array)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
-
+ 
 func _broadcast_list(room_id: String) -> void:
 	if not rooms.has(room_id):
 		return
 	var data: Array = rooms[room_id].players.values()
 	data.sort_custom(func(a, b): return a.join_order < b.join_order)
-
 	for pid in rooms[room_id].players:
 		if pid == 1:
 			GameConfig.players.clear()
-			for p in data:
-				GameConfig.players[p.id] = p
+			for p in data: GameConfig.players[p.id] = p
 			player_list_updated.emit(room_id, data)
 		else:
 			_receive_list.rpc_id(pid, room_id, data)
-
+ 
 @rpc("authority", "reliable")
 func _confirm_join(room_id: String, team: String, join_order: int,
 		mode: String, format: String, diff: String, map: String) -> void:
-	GameConfig.room_name = room_id
-	GameConfig.mode      = mode
-	GameConfig.format    = format
-	GameConfig.diff      = diff
-	GameConfig.map       = map
-	GameConfig.is_host   = false
-	print("[RoomManager]  Rejoint '%s' équipe %s (ordre %d) map %s" \
-		% [room_id, team, join_order, map])
-
+	GameConfig.room_name = room_id; GameConfig.mode = mode
+	GameConfig.format = format; GameConfig.diff = diff
+	GameConfig.map = map; GameConfig.is_host = false
+	print("[RoomManager] Rejoint '%s' equipe %s (ordre %d)" % [room_id, team, join_order])
+ 
 @rpc("authority", "reliable")
 func _notify_full(room_id: String) -> void:
-	print("[RoomManager]  Room '%s' pleine" % room_id)
 	room_full.emit(room_id)
-
+ 
 @rpc("authority", "reliable")
 func _receive_list(room_id: String, data: Array) -> void:
 	GameConfig.players.clear()
-	for p in data:
-		GameConfig.players[p.id] = p
+	for p in data: GameConfig.players[p.id] = p
 	player_list_updated.emit(room_id, data)
-
+ 
 @rpc("authority", "reliable")
 func _do_start(mode: String, format: String, diff: String,
 		map: String, players_data: Array) -> void:
-	GameConfig.mode   = mode
-	GameConfig.format = format
-	GameConfig.diff   = diff
-	GameConfig.map    = map
+	GameConfig.mode = mode; GameConfig.format = format
+	GameConfig.diff = diff; GameConfig.map    = map
 	GameConfig.players.clear()
-	for p in players_data:
-		GameConfig.players[p.id] = p
+	for p in players_data: GameConfig.players[p.id] = p
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
-
+ 
 func _format_to_max(format: String) -> int:
 	match format:
 		"1v1": return 2
 		"2v2": return 4
 		"3v3": return 6
 	return 2
-
-# Gestion deconnexion hote
-
+ 
+# ── Déconnexion hôte ──────────────────────────────────────────────────────────
 signal host_left(room_id: String)
-
+ 
 func handle_host_left(room_id: String) -> void:
-	# Appelé si l'hôte (peer 1) quitte en cours de lobby
-	# Tous les clients sont renvoyés au menu principal
-	if not rooms.has(room_id):
-		return
-	print("[RoomManager] L'hote a quitte la room '%s'" % room_id)
+	if not rooms.has(room_id): return
 	_notify_host_left.rpc(room_id)
 	rooms.erase(room_id)
 	Matchmaker.delete_room(room_id)
-
+ 
 @rpc("authority", "reliable")
 func _notify_host_left(room_id: String) -> void:
-	print("[RoomManager] L'hote a quitte — retour au menu")
 	host_left.emit(room_id)
 	GameConfig.reset()
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
-
-# Timeout client 
-
+	get_tree().change_scene_to_file("res://scenes/online/OnlineMenu.tscn")
+ 
+# ── Timeout client ────────────────────────────────────────────────────────────
 signal client_timeout(peer_id: int)
-
-const JOIN_TIMEOUT := 15.0   # secondes max pour qu'un client rejoigne
-
-var _pending_clients: Dictionary = {}   # { peer_id: temps_ecoule }
-
+ 
+const JOIN_TIMEOUT := 15.0
+var _pending_clients: Dictionary = {}
+ 
 func start_client_timeout(peer_id: int) -> void:
 	_pending_clients[peer_id] = 0.0
-	print("[RoomManager] Timeout demarre pour peer %d" % peer_id)
-
+ 
 func _process(delta: float) -> void:
+	# ── FIX : garder silencieux si pas de connexion active ──────────────────
+	if multiplayer.multiplayer_peer == null:
+		return
+	if multiplayer.multiplayer_peer.get_connection_status() \
+			!= MultiplayerPeer.CONNECTION_CONNECTED:
+		return
 	if not multiplayer.is_server():
 		return
+	# ────────────────────────────────────────────────────────────────────────
 	for peer_id in _pending_clients.keys():
 		_pending_clients[peer_id] += delta
 		if _pending_clients[peer_id] >= JOIN_TIMEOUT:
 			_pending_clients.erase(peer_id)
-			print("[RoomManager] Peer %d timeout — kick" % peer_id)
 			client_timeout.emit(peer_id)
 			remove_player(peer_id)
-
+ 
 func clear_client_timeout(peer_id: int) -> void:
-	# Appelé quand le client a bien rejoint la room
 	_pending_clients.erase(peer_id)
-
-# Si les vérifications sont prets 
-
+ 
 func all_players_ready(room_id: String) -> bool:
-	if not rooms.has(room_id):
-		return false
+	if not rooms.has(room_id): return false
 	for player in rooms[room_id].players.values():
-		if not player.get("ready", false):
-			return false
+		if not player.get("ready", false): return false
 	return true
-
+ 
 func get_player_count(room_id: String) -> int:
-	if not rooms.has(room_id):
-		return 0
-	return rooms[room_id].players.size()
-
+	return rooms[room_id].players.size() if rooms.has(room_id) else 0
+ 
 func is_room_full(room_id: String) -> bool:
-	if not rooms.has(room_id):
-		return false
+	if not rooms.has(room_id): return false
 	return rooms[room_id].players.size() >= _format_to_max(rooms[room_id].format)

@@ -119,6 +119,7 @@ func _refresh_slots() -> void:
 
 func _on_lancer_pressed() -> void:
 	if not GameConfig.is_host: return
+	GameConfig.mode = "multi"   # ← dire à Main.gd que c'est du multi
 	if RoomManager.rooms.has(GameConfig.room_name): RoomManager._start_game(GameConfig.room_name)
 	else: _status.text = "Room introuvable !"
 
