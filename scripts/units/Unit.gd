@@ -204,9 +204,10 @@ func _physics_process(_delta: float) -> void:
 	move_and_slide()
 
 func _play_anim(anim_name: String) -> void:
-	var sprite = get_node_or_null("Sprite2D")
-	if sprite and sprite.sprite_frames and sprite.sprite_frames.has_animation(anim_name):
-		sprite.play(anim_name)
+	var sprite = get_node_or_null("AnimatedSprite2D")
+	if sprite is AnimatedSprite2D:
+		if sprite.sprite_frames and sprite.sprite_frames.has_animation(anim_name):
+			sprite.play(anim_name)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COMBAT — détection automatique + attaque

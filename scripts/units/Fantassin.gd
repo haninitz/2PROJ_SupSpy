@@ -17,3 +17,8 @@ func _ready() -> void:
 	build_time   = 3.0
 	price        = 50
 	super._ready()         # appelle _ready() de Unit.gd
+
+func _unhandled_input(event):
+	if event is InputEventMouseButton and event.pressed:
+		print("Clic détecté à : ", get_global_mouse_position())
+		move_to(get_global_mouse_position())

@@ -1,11 +1,27 @@
 [gd_scene format=3 uid="uid://065bh5pwrlk0"]
 
-[ext_resource type="Script" uid="uid://b7fhs85lwvtwt" path="res://scripts/units/Fregate.gd" id="1_5plg8"]
+[ext_resource type="Script" uid="uid://fsi6w5mox08e" path="res://scripts/units/Fregate.gd" id="1_5plg8"]
+[ext_resource type="Texture2D" uid="uid://c2d63gwt18dks" path="res://assets/sprites/Boat.png" id="2_6a416"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_3r727"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_v2gyl"]
 radius = 220.0
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xelgw"]
+atlas = ExtResource("2_6a416")
+region = Rect2(0, 56, 56, 56)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_qojvb"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_xelgw")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}]
 
 [node name="Fregate" type="CharacterBody2D" unique_id=673168989]
 script = ExtResource("1_5plg8")
@@ -22,3 +38,7 @@ wait_time = 1.2999999999999998
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=1642423088]
 shape = SubResource("CircleShape2D_v2gyl")
+
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=1099988698]
+sprite_frames = SubResource("SpriteFrames_qojvb")
+animation = &"idle"

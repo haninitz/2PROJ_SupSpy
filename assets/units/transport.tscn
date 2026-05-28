@@ -1,11 +1,39 @@
 [gd_scene format=3 uid="uid://bsr1i11xfspgf"]
 
-[ext_resource type="Script" uid="uid://c5th2yhea82or" path="res://scripts/units/Transport.gd" id="1_tq1fq"]
+[ext_resource type="Script" uid="uid://c21jlmemuvy83" path="res://scripts/units/Transport.gd" id="1_tq1fq"]
+[ext_resource type="Texture2D" uid="uid://dtjaawgh5doaw" path="res://assets/sprites/rowboat.png" id="2_63npb"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_dg1jv"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_b4apj"]
 radius = 0.01
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rmcvk"]
+atlas = ExtResource("2_63npb")
+region = Rect2(96, 0, 96, 62)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qcka3"]
+atlas = ExtResource("2_63npb")
+region = Rect2(96, 0, 96, 62)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_daiqc"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rmcvk")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qcka3")
+}],
+"loop": true,
+"name": &"move",
+"speed": 5.0
+}]
 
 [node name="Transport" type="CharacterBody2D" unique_id=312546576]
 script = ExtResource("1_tq1fq")
@@ -21,3 +49,7 @@ shape = SubResource("CapsuleShape2D_dg1jv")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=2077215435]
 shape = SubResource("CircleShape2D_b4apj")
+
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=295907031]
+sprite_frames = SubResource("SpriteFrames_daiqc")
+animation = &"move"

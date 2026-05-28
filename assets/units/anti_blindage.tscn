@@ -1,11 +1,131 @@
 [gd_scene format=3 uid="uid://dafgendetxbn1"]
 
 [ext_resource type="Script" uid="uid://ddr03aphon0jw" path="res://scripts/units/Antiblindage.gd" id="1_nb1js"]
+[ext_resource type="Texture2D" uid="uid://cxf3prwh6i5pd" path="res://assets/sprites/anti_blindage.png" id="2_r6nm0"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_17vjx"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_fqjn5"]
 radius = 60.0
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bnerc"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(32, 72, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kq8yy"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(32, 72, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lbsnd"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(64, 72, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dp1iy"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(0, 72, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tpdkk"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(32, 108, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b7ktw"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(64, 108, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5alsb"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(0, 108, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wtdan"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(32, 36, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g8iys"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(0, 36, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5i1x4"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(64, 36, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pwb1y"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(32, 0, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_syr7p"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(0, 0, 32, 36)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ttcsl"]
+atlas = ExtResource("2_r6nm0")
+region = Rect2(64, 0, 32, 36)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_pocfj"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bnerc")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_kq8yy")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lbsnd")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dp1iy")
+}],
+"loop": true,
+"name": &"walk_down",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tpdkk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b7ktw")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5alsb")
+}],
+"loop": true,
+"name": &"walk_left",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wtdan")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_g8iys")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5i1x4")
+}],
+"loop": true,
+"name": &"walk_right",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_pwb1y")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_syr7p")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ttcsl")
+}],
+"loop": true,
+"name": &"walk_up",
+"speed": 8.0
+}]
 
 [node name="AntiBlindage" type="CharacterBody2D" unique_id=1496931368]
 script = ExtResource("1_nb1js")
@@ -23,4 +143,6 @@ wait_time = 1.2
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=258239843]
 shape = SubResource("CircleShape2D_fqjn5")
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=35891123]
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=302889386]
+sprite_frames = SubResource("SpriteFrames_pocfj")
+animation = &"walk_up"
