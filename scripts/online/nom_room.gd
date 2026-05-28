@@ -45,22 +45,30 @@ func _on_create_pressed() -> void:
 	if room_name.is_empty(): _status.text = "Entre un nom de mission !"; return
 	if room_name.length() < 3: _status.text = "Minimum 3 caractères !"; return
 	GameConfig.room_name = room_name; GameConfig.is_host = true
+	GameConfig.mode = "multi"  # toujours multi pour une room en ligne
 	_btn_create.disabled = true; _status.text = "Démarrage du serveur…"
 	if multiplayer.multiplayer_peer != null:
 		multiplayer.multiplayer_peer.close(); multiplayer.multiplayer_peer = null
 		await get_tree().create_timer(0.15).timeout
 	NetworkManager.create_server()
-	_status.text = "Enregistrement de la mission…"
-	if not Matchmaker.room_created.is_connected(_on_room_registered):
-		Matchmaker.room_created.connect(_on_room_registered, CONNECT_ONE_SHOT)
-	Matchmaker.create_room(room_name, NetworkManager.PLAYIT_HOST,
-		GameConfig.format, GameConfig.map, GameConfig.get_max_players())
-
-func _on_room_registered(_room_name: String) -> void:
-	_status.text = "Mission créée !"
+	# Enregistrer la room localement IMMÉDIATEMENT — pas besoin d'attendre le Matchmaker
 	RoomManager.join_room_local(GameConfig.room_name, GameConfig.mode,
 		GameConfig.format, GameConfig.diff, GameConfig.map, GameConfig.steam_name)
+	# Notifier le Matchmaker en parallèle (best-effort, non bloquant)
+	# Utiliser l'IP locale pour que les joueurs du même réseau puissent se connecter
+	var local_ip : String = "127.0.0.1"
+	var addrs : Array = IP.get_local_addresses()
+	for addr in addrs:
+		if addr.begins_with("192.168.") or addr.begins_with("10.") or addr.begins_with("172."):
+			local_ip = addr
+			break
+	Matchmaker.create_room(room_name, local_ip,
+		GameConfig.format, GameConfig.map, GameConfig.get_max_players())
+	_status.text = "Mission créée !"
 	SceneLoader.goto("res://scenes/online/SalleAttente.tscn")
+
+func _on_room_registered(_room_name: String) -> void:
+	pass  # Plus utilisé — gardé pour compatibilité signal
 
 func _flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new(); s.bg_color = bg; s.border_color = border

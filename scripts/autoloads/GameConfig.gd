@@ -1,6 +1,6 @@
 extends Node
 
-var mode:       String = "multi"
+var mode:       String = ""
 var format:     String = "1v1"
 var diff:       String = "med"
 var map:        String = "clover"
@@ -28,7 +28,7 @@ func get_players_per_team() -> int:
 	return get_max_players() / 2 as int
 
 func reset() -> void:
-	mode       = "multi"
+	mode       = ""
 	format     = "1v1"
 	diff       = "med"
 	map        = "clover"

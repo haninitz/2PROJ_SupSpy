@@ -283,9 +283,10 @@ func cancel_production() -> void:
 # ─────────────────────────────────────────
 func _refresh_visuals() -> void:
 	var color := Color(0.5, 0.5, 0.5)
-	var gm = get_node_or_null("/root/GameManager")
-	if gm:
-		color = gm.get_team_color(owner_id)
+	if is_inside_tree():
+		var gm = get_node_or_null("/root/GameManager")
+		if gm:
+			color = gm.get_team_color(owner_id)
 	if sprite:
 		sprite.modulate = color
 	if owner_label:
@@ -294,6 +295,8 @@ func _refresh_visuals() -> void:
 func _get_owner_label() -> String:
 	if owner_id == 0:
 		return "Neutre"
+	if not is_inside_tree():
+		return str(owner_id)
 	var gm = get_node_or_null("/root/GameManager")
 	if gm:
 		var player = gm.find_player_by_id(owner_id)

@@ -12,7 +12,7 @@ config_version=5
 
 config/name="2PROJ_Hanitea"
 run/main_scene="uid://217bego206hy"
-config/features=PackedStringArray("4.6", "Forward Plus")
+config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -32,6 +32,7 @@ Combat="*uid://ba1nfq7cn400f"
 
 [display]
 
+window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
 [physics]
@@ -40,4 +41,5 @@ window/stretch/mode="canvas_items"
 
 [rendering]
 
-rendering_device/driver.windows="d3d12"
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

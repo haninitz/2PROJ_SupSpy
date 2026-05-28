@@ -21,15 +21,24 @@ func join_room_local(room_id: String, mode: String,
 func _register_player(sender: int, room_id: String, mode: String,
 		format: String, diff: String, map: String, player_name: String) -> void:
 
-	if not rooms.has(room_id):
-		_create_room(room_id, mode, format, diff, map)
+	# Si room_id vide ou inconnue, rejoindre la première room disponible
+	var rid_final : String = room_id
+	if rid_final == "" or not rooms.has(rid_final):
+		for rid in rooms:
+			var r = rooms[rid]
+			if not r.get("started", false) and r.players.size() < _format_to_max(r.format):
+				rid_final = rid
+				break
 
-	var room:  Dictionary = rooms[room_id]
+	if not rooms.has(rid_final):
+		_create_room(rid_final, mode, format, diff, map)
+
+	var room:  Dictionary = rooms[rid_final]
 	var max_p: int        = _format_to_max(room.format)
 
 	if room.players.size() >= max_p:
 		if sender != 1:
-			_notify_full.rpc_id(sender, room_id)
+			_notify_full.rpc_id(sender, rid_final)
 		return
 
 	var join_order: int = room.players.size()
@@ -42,13 +51,13 @@ func _register_player(sender: int, room_id: String, mode: String,
 		"join_order": join_order,
 		"ready":      false
 	}
-	player_room[sender] = room_id
+	player_room[sender] = rid_final
 
 	print("[RoomManager] Joueur %d '%s' → room '%s' (team %s, ordre %d)" \
-		% [sender, player_name, room_id, team, join_order])
+		% [sender, player_name, rid_final, team, join_order])
 
 	if sender == 1:
-		GameConfig.room_name = room_id
+		GameConfig.room_name = rid_final
 		GameConfig.mode      = mode
 		GameConfig.format    = format
 		GameConfig.diff      = diff
@@ -56,11 +65,11 @@ func _register_player(sender: int, room_id: String, mode: String,
 		GameConfig.is_host   = true
 	else:
 		_confirm_join.rpc_id(sender,
-			room_id, team, join_order,
+			rid_final, team, join_order,
 			room.mode, room.format, room.diff, room.map
 		)
 
-	_broadcast_list(room_id)
+	_broadcast_list(rid_final)
 
 	# ─ SUPPRIMÉ : plus de lancement automatique quand la room est pleine ─
 	# C'est l'hôte qui lance manuellement depuis SalleAttente via _start_game()

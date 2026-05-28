@@ -167,13 +167,37 @@ func _get_turn_screen()       -> Panel: return _victory.turn_screen    if _victo
 func _get_hud() -> CanvasLayer: return _hud
 
 func _on_splash_finished() -> void:
-	if _menu and _menu.main_menu:
-		_menu.main_menu.visible = true
+	# En mode ai/multi on démarre directement la partie, pas le menu
+	if GameConfig.mode == "ai" or GameConfig.mode == "multi":
+		var map_idx : int = 0
+		match GameConfig.map:
+			"clover": map_idx = 0
+			"sam":    map_idx = 1
+			"alex":   map_idx = 2
+		start_from_online(map_idx)
+	else:
+		if _menu and _menu.main_menu:
+			_menu.main_menu.visible = true
 
 
 # Appelé depuis recap_ia.gd pour démarrer directement sans passer par le menu
 func start_from_online(map_idx: int) -> void:
 	_game_started = true
+	# Cacher le conteneur de tous les écrans menu en une seule opération
+	if is_instance_valid(_menu):
+		var screens_root : Node = _menu.get_node_or_null("../MenuScreens")
+		if screens_root == null:
+			# Chercher parmi les enfants du parent
+			for child in get_children():
+				if child.name == "MenuScreens" or child == _menu.get("_screens_root"):
+					child.visible = false
+					break
+			# Fallback : cacher tous les Panel enfants directs du CanvasLayer
+			for child in get_children():
+				if child is Panel and is_instance_valid(child):
+					child.visible = false
+		else:
+			screens_root.visible = false
 	_hud.show_hud()
 	_show_map(map_idx)
 	map_selected.emit(map_idx)

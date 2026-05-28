@@ -124,8 +124,9 @@ func _on_lancer_pressed() -> void:
 
 func _on_quitter_pressed() -> void:
 	if GameConfig.is_host: Matchmaker.delete_room(GameConfig.room_name)
-	NetworkManager.disconnect_from_server(); GameConfig.reset()
-	SceneLoader.goto("res://scenes/online/OnlineMenu.tscn")
+	NetworkManager.disconnect_from_server()
+	GameConfig.reset()
+	SceneLoader.goto("res://scenes/Main.tscn")
 
 func _flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new(); s.bg_color = bg; s.border_color = border

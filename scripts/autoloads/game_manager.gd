@@ -35,6 +35,7 @@ const NEUTRAL_ID : int = 0
 func _process(delta: float) -> void:
 	if not game_started:
 		return
+	camps = camps.filter(func(c): return is_instance_valid(c))
 
 	income_timer += delta
 
@@ -184,6 +185,8 @@ func get_team_color(id: int) -> Color:
 	return player.color if player else Color.WHITE
 
 func _check_victory() -> void:
+	# Nettoyer les camps détruits avant toute vérification
+	camps = camps.filter(func(c): return is_instance_valid(c))
 	if camps.is_empty():
 		return
 
@@ -193,6 +196,8 @@ func _check_victory() -> void:
 		var has_camp := false
 
 		for camp in camps:
+			if not is_instance_valid(camp):
+				continue
 			if camp.owner_id == player.id:
 				has_camp = true
 				break

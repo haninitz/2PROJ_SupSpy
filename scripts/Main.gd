@@ -39,7 +39,7 @@ const UNIT_SCENES := {
 var _camps          : Array = []   # Array[Camp] — nodes du groupe "camps"
 var camps           : Array :   # alias public pour minimap.gd
 	get: return _camps
-var _gold           : Array = [150, 150]
+var _gold           : Array = [0, 150, 150]  # index = owner_id (0=neutre,1=j1,2=j2)
 var local_player_id: int = 1
 var _ai_enabled: bool = false
 var _ai_player_id: int = 2
@@ -70,7 +70,7 @@ func _ready() -> void:
 	add_to_group("main_node")
 	_ui = $UI
 
-	if GameConfig.mode == "ai":
+	if GameConfig.mode == "ai" or GameConfig.mode == "multi":
 		var map_idx : int = 0
 		match GameConfig.map:
 			"clover": map_idx = 0
@@ -100,15 +100,30 @@ func _on_map_selected(index: int) -> void:
 
 func _start_game() -> void:
 	_game_over = false
-	local_player_id = 1
 
-	_ai_enabled =true
+	# En multi : convertir le peer_id ENet (aléatoire) en player_id de jeu (1 ou 2)
+	# via le join_order stocké dans GameConfig.players
+	if GameConfig.mode == "multi":
+		var my_data = GameConfig.players.get(GameConfig.my_peer_id, null)
+		if my_data != null:
+			# join_order 0 → joueur 1 (hote), join_order 1 → joueur 2 (client)
+			local_player_id = my_data.get("join_order", 0) + 1
+		else:
+			# Fallback : hote=1, client=2
+			local_player_id = 1 if GameConfig.is_host else 2
+		print("[Main] local_player_id = %d (peer_id=%d)" % [local_player_id, GameConfig.my_peer_id])
+	else:
+		local_player_id = 1
+
+	# L'IA ne tourne que en mode ai, et seulement chez l'hôte
+	_ai_enabled = (GameConfig.mode == "ai")
 	_ai_player_id = 2
 	_ai_timer = 0.0
 
 	_selected = null
 	_income_timer = 0.0
 	_game_start_time = Time.get_ticks_msec() / 1000.0
+	_gold         = [0, 150, 150]
 	_camps_peak   = [0, 0]
 	_income_peak  = [0, 0]
 	_units_lost   = [0, 0]
@@ -154,41 +169,59 @@ func _start_game() -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # BOUCLE
 # ─────────────────────────────────────────────────────────────────────────────
+# ── Sync multijoueur ─────────────────────────────────────────────────────────
+const SYNC_INTERVAL : float = 0.5
+var _sync_timer     : float = 0.0
+
 func _process(delta: float) -> void:
 	if _game_over or _camps.is_empty():
 		return
+	_camps = _camps.filter(func(c): return is_instance_valid(c))
+	if _camps.is_empty():
+		return
 
-	# Revenus
-	_income_timer += delta
-	if _income_timer >= INCOME_INTERVAL:
-		_income_timer = 0.0
-		_distribute_income()
-		# Mise à jour des pics de stats
-		for p in [0, 1]:
-			var cnt : int = 0
-			var inc : int = 0
-			for c in _camps:
-				if c.owner_id == p:
-					cnt += 1
-					inc += c.income_value
-			if cnt > _camps_peak[p]:  _camps_peak[p]  = cnt
-			if inc > _income_peak[p]: _income_peak[p] = inc
+	# En multi : le client ne calcule pas income/production (hote est l autorité)
+	# Mais il continue pour le redraw overlay et l input
+	var _is_client : bool = GameConfig.mode == "multi" and not GameConfig.is_host
 
-	# Production
-	for camp in _camps:
-		if camp.production_queue.is_empty():
-			continue
-		var entry : Dictionary = camp.production_queue[0]
-		entry["remaining"] -= delta
-		if entry["remaining"] <= 0.0:
-			camp.production_queue.pop_front()
-			camp.units += 1
-			_spawn_unit(entry["unit_type"], camp)
-			_log("Unité produite à %s" % camp.camp_name)
-			# Lance la suivante si elle existe
-			if not camp.production_queue.is_empty():
-				camp.production_queue[0]["remaining"] = _build_time(camp.production_queue[0]["unit_type"])
-			_refresh_ui()
+	if not _is_client:
+		# Revenus
+		_income_timer += delta
+		if _income_timer >= INCOME_INTERVAL:
+			_income_timer = 0.0
+			_distribute_income()
+			for p in [1, 2]:
+				var idx : int = p - 1
+				var cnt : int = 0
+				var inc : int = 0
+				for c in _camps:
+					if c.owner_id == p:
+						cnt += 1
+						inc += c.income_value
+				if cnt > _camps_peak[idx]:  _camps_peak[idx]  = cnt
+				if inc > _income_peak[idx]: _income_peak[idx] = inc
+
+		# Sync host → clients
+		if GameConfig.mode == "multi":
+			_sync_timer += delta
+			if _sync_timer >= SYNC_INTERVAL:
+				_sync_timer = 0.0
+				_broadcast_state()
+
+		# Production
+		for camp in _camps:
+			if camp.production_queue.is_empty():
+				continue
+			var entry : Dictionary = camp.production_queue[0]
+			entry["remaining"] -= delta
+			if entry["remaining"] <= 0.0:
+				camp.production_queue.pop_front()
+				camp.units += 1
+				_spawn_unit(entry["unit_type"], camp)
+				_log("Unité produite à %s" % camp.camp_name)
+				if not camp.production_queue.is_empty():
+					camp.production_queue[0]["remaining"] = _build_time(camp.production_queue[0]["unit_type"])
+				_refresh_ui()
 
 	if _ai_enabled:
 		_ai_timer += delta
@@ -268,9 +301,29 @@ func _deselect() -> void:
 # COMBAT
 # ─────────────────────────────────────────────────────────────────────────────
 func _do_attack(src: Node, tgt: Node, deselect_after: bool = true) -> void:
+	var src_idx : int = _camps.find(src)
+	var tgt_idx : int = _camps.find(tgt)
+
+	# En multi : envoyer le RPC aux autres peers ET résoudre localement
+	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
+		_rpc_attack.rpc(src_idx, tgt_idx)  # envoie aux autres (pas a soi-meme)
+
+	# Résoudre localement dans tous les cas
+	_resolve_attack(src_idx, tgt_idx, deselect_after)
+
+@rpc("any_peer", "reliable")
+func _rpc_attack(src_idx: int, tgt_idx: int) -> void:
+	if src_idx < 0 or src_idx >= _camps.size(): return
+	if tgt_idx < 0 or tgt_idx >= _camps.size(): return
+	_resolve_attack(src_idx, tgt_idx, false)
+
+func _resolve_attack(src_idx: int, tgt_idx: int, deselect_after: bool) -> void:
+	if src_idx < 0 or src_idx >= _camps.size(): return
+	if tgt_idx < 0 or tgt_idx >= _camps.size(): return
+	var src : Node = _camps[src_idx]
+	var tgt : Node = _camps[tgt_idx]
 	var old_owner : int = tgt.owner_id
 
-	# Passe les nodes directement à Combat.resolve
 	Combat.resolve(src, tgt)
 
 	if tgt.owner_id != old_owner:
@@ -280,7 +333,6 @@ func _do_attack(src: Node, tgt: Node, deselect_after: bool = true) -> void:
 		_log("✗ Attaque sur %s repoussée" % tgt.camp_name)
 
 	if deselect_after:
-
 		_deselect()
 
 
@@ -421,34 +473,102 @@ func _on_recruit_pressed(unit_type: String) -> void:
 		_log("Ce camp ne vous appartient pas !")
 		return
 
-	var player = GameManager.find_player_by_id(local_player_id)
-	if player == null:
-		_log("Joueur introuvable.")
-		return
-
 	var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
 
-	if player.gold < price:
-		_log("Pas assez d'or ! (%d requis)" % price)
+	# Verifie et deduit l or du tableau unifie _gold
+	if local_player_id >= _gold.size() or _gold[local_player_id] < price:
+		_log("Pas assez d or ! (%d requis)" % price)
 		return
 
 	if _selected.production_queue.size() >= MAX_QUEUE:
 		_log("File pleine !")
 		return
 
-	player.gold -= price
+	_gold[local_player_id] -= price
 
 	var bt: float = _build_time(unit_type)
 
-	_selected.production_queue.append({
+	var camp_idx : int = _camps.find(_selected)
+
+	# En multi : envoyer le RPC aux autres peers ET résoudre localement
+	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
+		_rpc_recruit.rpc(camp_idx, unit_type)  # envoie aux autres
+
+	# Résoudre localement dans tous les cas
+	_resolve_recruit(camp_idx, unit_type)
+
+@rpc("any_peer", "reliable")
+func _rpc_recruit(camp_idx: int, unit_type: String) -> void:
+	if camp_idx < 0 or camp_idx >= _camps.size(): return
+	# Sur le peer distant : déduit l or du joueur qui a recruté
+	var price : int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
+	var sender_id : int = multiplayer.get_remote_sender_id()
+	if sender_id == 0: sender_id = local_player_id
+	if sender_id < _gold.size():
+		_gold[sender_id] -= price
+	_resolve_recruit(camp_idx, unit_type)
+
+func _resolve_recruit(camp_idx: int, unit_type: String) -> void:
+	if camp_idx < 0 or camp_idx >= _camps.size(): return
+	var camp : Node = _camps[camp_idx]
+	var bt : float = _build_time(unit_type)
+	camp.production_queue.append({
 		"unit_type": unit_type,
 		"remaining": bt
 	})
-
-	_selected.unit_type = unit_type
-
-	_log("%s ajouté à la file de %s" % [unit_type, _selected.camp_name])
+	camp.unit_type = unit_type
+	_log("%s ajouté à la file de %s" % [unit_type, camp.camp_name])
 	_refresh_ui()
+
+
+# =============================================================================
+#  SYNC MULTIJOUEUR — broadcast d état complet depuis l hote
+# =============================================================================
+
+func _broadcast_state() -> void:
+	if not multiplayer.is_server():
+		return
+	var camps_data : Array = []
+	for i in range(_camps.size()):
+		var c = _camps[i]
+		if not is_instance_valid(c):
+			continue
+		camps_data.append({
+			"i":    i,
+			"own":  c.owner_id,
+			"u":    c.units,
+			"ut":   c.unit_type,
+			"qs":   c.production_queue.size(),
+		})
+	_receive_state.rpc(camps_data, _gold.duplicate())
+
+
+@rpc("authority", "reliable")
+func _receive_state(camps_data: Array, gold_data: Array) -> void:
+	# L hote ignore ses propres broadcasts
+	if GameConfig.is_host:
+		return
+	for cd in camps_data:
+		var idx : int = cd["i"]
+		if idx < 0 or idx >= _camps.size():
+			continue
+		var camp = _camps[idx]
+		if not is_instance_valid(camp):
+			continue
+		# change_owner gère couleur + label + health bar si owner change
+		if camp.owner_id != cd["own"] and camp.has_method("change_owner"):
+			camp.change_owner(cd["own"])
+		else:
+			camp.owner_id = cd["own"]
+		camp.units     = cd["u"]
+		camp.unit_type = cd["ut"]
+	if gold_data.size() == _gold.size():
+		_gold = gold_data.duplicate()
+	_refresh_ui()
+	# Forcer le redraw de l overlay (cercles + nombres d unités)
+	if _overlay:
+		_overlay.queue_redraw()
+
 
 func _build_time(unit_type: String) -> float:
 	return UnitDefs.TYPES.get(unit_type, {}).get("build_time", 5.0)
@@ -462,17 +582,21 @@ func _on_end_turn() -> void:
 # REVENUS
 # ─────────────────────────────────────────────────────────────────────────────
 func _distribute_income() -> void:
+	# Seul l hote distribue les revenus en mode multi
+	if GameConfig.mode == "multi" and not GameConfig.is_host:
+		return
 	var regions : Array = MapDefs.MAPS[_map_index].get("regions", [])
-	for p in [0, 1]:
+	for p_id in [1, 2]:
 		var inc : int = 0
 		for c in _camps:
-			if c.owner_id == p:
+			if c.owner_id == p_id:
 				inc += c.income_value
 		for region in regions:
-			if _region_owner(region["camps"]) == p:
+			if _region_owner(region["camps"]) == p_id:
 				inc += region["bonus"]
-		_gold[p] += inc
-		_log("Joueur %d +%d or" % [p + 1, inc])
+		if p_id < _gold.size():
+			_gold[p_id] += inc
+		_log("Joueur %d +%d or" % [p_id, inc])
 	_refresh_ui()
 
 
@@ -482,6 +606,8 @@ func _region_owner(camp_indices: Array) -> int:
 	var owner : int = -2
 	for i in camp_indices:
 		if i >= _camps.size():
+			return -1
+		if not is_instance_valid(_camps[i]):
 			return -1
 		var o : int = _camps[i].owner_id
 		if owner == -2:
@@ -497,6 +623,8 @@ func _region_owner(camp_indices: Array) -> int:
 func _check_victory() -> void:
 	var has := [false, false]
 	for c in _camps:
+		if not is_instance_valid(c):
+			continue
 		if c.owner_id == 0: has[0] = true
 		elif c.owner_id == 1: has[1] = true
 	if not has[0]: _end_game(1)
@@ -595,9 +723,9 @@ func _refresh_leaderboard() -> void:
 		lb.remove_child(c)
 		c.free()
 
-	var COLORS := [Color(0.22, 0.45, 0.90), Color(0.88, 0.22, 0.22)]
+	var COLORS := {1: Color(0.22, 0.45, 0.90), 2: Color(0.88, 0.22, 0.22)}
 
-	for p in [0, 1]:
+	for p in [1, 2]:
 		var cnt : int = 0
 		var inc : int = 0
 		for c in _camps:
@@ -622,7 +750,7 @@ func _refresh_leaderboard() -> void:
 		card.add_child(bar)
 
 		var nl := Label.new()
-		nl.text = PLAYER_NAMES[p]
+		nl.text = PLAYER_NAMES[p - 1]
 		nl.position = Vector2(12, 3)
 		nl.size = Vector2(194, 17)
 		nl.add_theme_font_size_override("font_size", 12)
