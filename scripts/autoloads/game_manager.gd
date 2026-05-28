@@ -9,7 +9,7 @@ signal region_captured(region_name: String, player: Object)
 const PlayerScript = preload("res://scripts/Player.gd")
 
 var player_count    := 2
-var income_interval := 30.0
+
 var region_bonus    := 200
 
 var available_teams := [
@@ -27,24 +27,28 @@ var players      : Array      = []
 var camps        : Array      = []
 var regions      : Dictionary = {}
 var game_started : bool       = false
-var income_timer : float      = 0.0
+var income_interval: float = 10.0
+var income_timer: float = 0.0
 
 const NEUTRAL_ID : int = 0
 
 func _process(delta: float) -> void:
 	if not game_started:
 		return
+
 	income_timer += delta
+
 	if income_timer >= income_interval:
 		income_timer = 0.0
 		_distribute_income()
+		_check_victory()
 
-func start_game_with_camps(render_camps: Array) -> void:
+func start_game_with_camps(camps_list: Array) -> void:
+	camps = camps_list
 	_create_players()
-	camps = render_camps
-	_assign_starting_camps()
+	_assign_camps_to_players()
 	game_started = true
-	print("[GameManager] Partie lancee - ", players.size(), " joueurs, ", camps.size(), " camps.")
+	income_timer = 0.0
 
 func start_game() -> void:
 	_create_players()
@@ -53,9 +57,20 @@ func start_game() -> void:
 
 func _create_players() -> void:
 	players.clear()
-	player_count = mini(player_count, available_teams.size())
+
+	player_count = GameConfig.get_max_players()
+	player_count = clampi(player_count, 2, available_teams.size())
+
 	for i in range(player_count):
-		var team : Dictionary = available_teams[i]
+		var team_index: int = i
+
+		if i < GameConfig.selected_team_ids.size():
+			team_index = GameConfig.selected_team_ids[i]
+
+		team_index = clampi(team_index, 0, available_teams.size() - 1)
+
+		var team: Dictionary = available_teams[team_index]
+
 		var p = PlayerScript.new()
 		p.setup(i + 1, team["name"], team["color"])
 		players.append(p)
@@ -116,8 +131,8 @@ func _player_owns_region(player, region_name: String) -> bool:
 			return false
 	return true
 
-func _check_region_bonus(player_id: int) -> void:
-	var player = find_player_by_id(player_id)
+func _check_region_bonus(id: int) -> void:
+	var player = find_player_by_id(id)
 	if not player:
 		return
 	for region_name in regions:
@@ -148,22 +163,70 @@ func _set_camp_owner(camp, new_id: int) -> void:
 	elif is_instance_valid(camp):
 		camp.change_owner(new_id)
 
-func find_player_by_id(player_id: int):
-	if player_id == NEUTRAL_ID:
+func find_player_by_id(id: int):
+	if id == NEUTRAL_ID:
 		return null
 	for player in players:
-		if player.id == player_id:
+		if player.id == id:
 			return player
 	return null
 
 func get_alive_players() -> Array:
 	return players.filter(func(p): return not p.is_defeated())
 
-func get_player_camps(player_id: int) -> Array:
-	return camps.filter(func(c): return _get_camp_owner(c) == player_id)
+func get_player_camps(id: int) -> Array:
+	return camps.filter(func(c): return _get_camp_owner(c) == id)
 
-func get_team_color(player_id: int) -> Color:
-	if player_id == NEUTRAL_ID:
+func get_team_color(id: int) -> Color:
+	if id == NEUTRAL_ID:
 		return Color(0.5, 0.5, 0.5)
-	var player = find_player_by_id(player_id)
+	var player = find_player_by_id(id)
 	return player.color if player else Color.WHITE
+
+func _check_victory() -> void:
+	if camps.is_empty():
+		return
+
+	var alive_players: Array[int] = []
+
+	for player in players:
+		var has_camp := false
+
+		for camp in camps:
+			if camp.owner_id == player.id:
+				has_camp = true
+				break
+
+		if has_camp:
+			alive_players.append(player.id)
+
+	if alive_players.size() <= 1:
+		game_started = false
+		var winner_id: int = alive_players[0] if alive_players.size() == 1 else 0
+		print("[GameManager] Partie terminée. Gagnant : ", winner_id)
+
+func _assign_camps_to_players() -> void:
+	# Les camps ont déjà leur owner_id grâce à Main.gd.
+	# Ici, on ne change pas les propriétaires.
+	# On enregistre juste les camps dans les bons joueurs.
+
+	for player in players:
+		if "owned_camps" in player:
+			player.owned_camps.clear()
+
+	for camp in camps:
+		if camp == null:
+			continue
+
+		var owner_id: int = camp.owner_id
+
+		# owner_id = 0 veut dire neutre
+		if owner_id == 0:
+			continue
+
+		var player = find_player_by_id(owner_id)
+		if player == null:
+			continue
+
+		if "owned_camps" in player:
+			player.owned_camps.append(camp)

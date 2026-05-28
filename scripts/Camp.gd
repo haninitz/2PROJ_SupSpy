@@ -169,7 +169,7 @@ func change_owner(new_owner_id: int) -> void:
 	print("[Camp] ", camp_name, " sécurisée par le squad ", new_owner_id)
 
 func is_neutral() -> bool:
-	return owner_id == -1
+	return owner_id == 0
 
 # ─────────────────────────────────────────
 #  COMBAT
@@ -292,7 +292,7 @@ func _refresh_visuals() -> void:
 		owner_label.text = _get_owner_label()
 
 func _get_owner_label() -> String:
-	if owner_id == -1:
+	if owner_id == 0:
 		return "Neutre"
 	var gm = get_node_or_null("/root/GameManager")
 	if gm:

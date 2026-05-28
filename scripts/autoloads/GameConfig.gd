@@ -11,6 +11,7 @@ var my_peer_id: int    = 0
 var is_host:    bool   = false
 var server_ip:  String = "127.0.0.1"
 var players:    Dictionary = {}
+var selected_team_ids: Array[int] = [0, 1]
 var token:    String = ""
 var username: String = ""
 var wins:     int    = 0
@@ -35,3 +36,4 @@ func reset() -> void:
 	is_host    = false
 	my_peer_id = 0
 	players.clear()
+	selected_team_ids = [0, 1]
