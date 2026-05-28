@@ -2,7 +2,7 @@ class_name WOOHPCruiser
 extends Unit
 
 func _ready() -> void:
-	unit_type    = UnitType.FRIGATE
+	unit_type    = UnitType.FREGATE
 	max_hp       = 150.0
 	damage       = 25.0
 	attack_range = 220.0

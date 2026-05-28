@@ -2,7 +2,7 @@ class_name Healer
 extends Unit
 
 func _ready() -> void:
-	unit_type    = UnitType.HEALER
+	unit_type    = UnitType.SOIGNEUR
 	max_hp       = 80.0
 	damage       = 8.0
 	attack_range = 60.0

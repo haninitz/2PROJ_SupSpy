@@ -15,4 +15,6 @@ func _ready() -> void:
 func attack(target: Node) -> void:
 	if not is_alive or target == null:
 		return
-	_area_attack(target.global_position, _calculate_damage(target))
+
+	if target.has_method("take_damage"):
+		target.take_damage(_calculate_damage(target), self)

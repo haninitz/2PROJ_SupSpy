@@ -2,7 +2,7 @@ class_name Support
 extends Unit
 
 func _ready() -> void:
-	unit_type    = UnitType.SUPPORT
+	unit_type    = UnitType.SOUTIEN
 	max_hp       = 85.0
 	damage       = 10.0
 	attack_range = 80.0

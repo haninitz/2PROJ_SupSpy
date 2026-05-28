@@ -40,13 +40,17 @@ var _camps          : Array = []   # Array[Camp] — nodes du groupe "camps"
 var camps           : Array :   # alias public pour minimap.gd
 	get: return _camps
 var _gold           : Array = [150, 150]
-var _turn           : int   = 1
-var _cur            : int   = 0    # joueur actuel (0 ou 1)
+var local_player_id: int = 1
+var _ai_enabled: bool = false
+var _ai_player_id: int = 2
+var _ai_timer: float = 0.0
+var _ai_interval: float = 3.0
 var _selected       : Node  = null # Camp sélectionné
 var _map_index      : int   = 0
 var _game_over      : bool  = false
 var _income_timer   : float = 0.0
 var _overlay        : CampOverlay = null
+
 
 # ── Statistiques de fin de partie ────────────────────────────────────────────
 var _game_start_time : float = 0.0
@@ -95,11 +99,14 @@ func _on_map_selected(index: int) -> void:
 
 
 func _start_game() -> void:
-	_game_over    = false
-	_turn         = 1
-	_cur          = 0
-	_gold         = [150, 150]
-	_selected     = null
+	_game_over = false
+	local_player_id = 1
+
+	_ai_enabled =true
+	_ai_player_id = 2
+	_ai_timer = 0.0
+
+	_selected = null
 	_income_timer = 0.0
 	_game_start_time = Time.get_ticks_msec() / 1000.0
 	_camps_peak   = [0, 0]
@@ -127,12 +134,12 @@ func _start_game() -> void:
 		camp.units        = d["units"]
 		camp.unit_type    = "infantry"
 		camp.production_queue = []
-		match d["owner"]:
-			1: camp.owner_id = 0
-			2: camp.owner_id = 1
-			_: camp.owner_id = -1
+		camp.owner_id = int(d.get("owner", 0))
+		if camp.has_method("change_owner"):
+			camp.change_owner(camp.owner_id)
 		add_child(camp)
 		_camps.append(camp)
+	GameManager.start_game_with_camps(_camps)
 
 	_refresh_ui()
 	# Crée/recycle l'overlay de dessin (z_index haut = au-dessus des TileMaps)
@@ -183,7 +190,14 @@ func _process(delta: float) -> void:
 				camp.production_queue[0]["remaining"] = _build_time(camp.production_queue[0]["unit_type"])
 			_refresh_ui()
 
-	if _overlay: _overlay.queue_redraw()
+	if _ai_enabled:
+		_ai_timer += delta
+		if _ai_timer >= _ai_interval:
+			_ai_timer = 0.0
+			_run_ai_tick()
+
+	if _overlay: 
+		_overlay.queue_redraw()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -204,7 +218,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# Pas de sélection → sélectionner si camp allié
 	if _selected == null:
-		if clicked.owner_id == _cur:
+		if clicked.owner_id == local_player_id:
 			_select(clicked)
 		else:
 			_log("Ce camp ne vous appartient pas !")
@@ -216,7 +230,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	# Camp allié → changer sélection
-	if clicked.owner_id == _cur:
+	if clicked.owner_id == local_player_id:
 		_select(clicked)
 		return
 
@@ -253,7 +267,7 @@ func _deselect() -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # COMBAT
 # ─────────────────────────────────────────────────────────────────────────────
-func _do_attack(src: Node, tgt: Node) -> void:
+func _do_attack(src: Node, tgt: Node, deselect_after: bool = true) -> void:
 	var old_owner : int = tgt.owner_id
 
 	# Passe les nodes directement à Combat.resolve
@@ -265,7 +279,9 @@ func _do_attack(src: Node, tgt: Node) -> void:
 	else:
 		_log("✗ Attaque sur %s repoussée" % tgt.camp_name)
 
-	_deselect()
+	if deselect_after:
+
+		_deselect()
 
 
 func _camp_to_dict(camp: Node) -> Dictionary:
@@ -280,7 +296,119 @@ func _camp_to_dict(camp: Node) -> Dictionary:
 		"queue"    : []
 	}
 
+#ia
+func _run_ai_tick() -> void:
+	if _game_over:
+		return
 
+	var ai_player = GameManager.find_player_by_id(_ai_player_id)
+	if ai_player == null:
+		print("[AI DEBUG] Joueur IA introuvable")
+		return
+
+	var ai_camps: Array = []
+	var targets: Array = []
+
+	for camp in _camps:
+		if camp.owner_id == _ai_player_id:
+			ai_camps.append(camp)
+		else:
+			targets.append(camp)
+
+	print("[AI DEBUG] camps IA = ", ai_camps.size(), " | targets = ", targets.size())
+
+	if ai_camps.is_empty() or targets.is_empty():
+		return
+
+	_ai_recruit(ai_player, ai_camps)
+	_ai_attack(ai_camps, targets)
+
+
+func _ai_recruit(ai_player, ai_camps: Array) -> void:
+	var unit_choices: Array = ["infantry", "range", "heavy"]
+
+	var available_camps: Array = []
+
+	for camp in ai_camps:
+		if camp.production_queue.size() < MAX_QUEUE:
+			available_camps.append(camp)
+
+	if available_camps.is_empty():
+		return
+
+	var camp = available_camps.pick_random()
+
+	var affordable_units: Array = []
+
+	for unit_type in unit_choices:
+		var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
+		if ai_player.gold >= price:
+			affordable_units.append(unit_type)
+
+	if affordable_units.is_empty():
+		return
+
+	var chosen_unit: String = affordable_units.pick_random()
+	var price: int = UnitDefs.TYPES.get(chosen_unit, {}).get("price", 50)
+
+	ai_player.gold -= price
+
+	camp.production_queue.append({
+		"unit_type": chosen_unit,
+		"remaining": _build_time(chosen_unit)
+	})
+
+	camp.unit_type = chosen_unit
+
+	_log("IA recrute %s à %s" % [chosen_unit, camp.camp_name])
+	_refresh_ui()
+
+
+func _ai_attack(ai_camps: Array, targets: Array) -> void:
+	var possible_attackers: Array = []
+
+	for camp in ai_camps:
+		if camp.units > 1:
+			possible_attackers.append(camp)
+
+	if possible_attackers.is_empty():
+		return
+
+	var attacker = possible_attackers.pick_random()
+	var target = _ai_find_best_target(attacker, targets)
+
+	if target == null:
+		return
+
+	_log("IA attaque %s depuis %s" % [target.camp_name, attacker.camp_name])
+	_do_attack(attacker, target, false)
+
+
+func _ai_find_best_target(attacker: Node, targets: Array) -> Node:
+	var best_target: Node = null
+	var best_score: float = INF
+
+	for target in targets:
+		if target == null:
+			continue
+
+		if target.owner_id == _ai_player_id:
+			continue
+
+		var distance: float = attacker.global_position.distance_to(target.global_position)
+		var defense_score: float = float(target.units) * 40.0
+		var neutral_penalty: float = 0.0
+
+		if target.owner_id == 0:
+			neutral_penalty = 80.0
+
+		var score: float = distance + defense_score + neutral_penalty
+
+		if score < best_score:
+			best_score = score
+			best_target = target
+
+	return best_target
 # ─────────────────────────────────────────────────────────────────────────────
 # RECRUTEMENT
 # ─────────────────────────────────────────────────────────────────────────────
@@ -288,43 +416,46 @@ func _on_recruit_pressed(unit_type: String) -> void:
 	if _selected == null:
 		_log("Sélectionnez d'abord un camp !")
 		return
-	if _selected.owner_id != _cur:
+
+	if _selected.owner_id != local_player_id:
+		_log("Ce camp ne vous appartient pas !")
 		return
 
-	var price : int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
-	if _gold[_cur] < price:
+	var player = GameManager.find_player_by_id(local_player_id)
+	if player == null:
+		_log("Joueur introuvable.")
+		return
+
+	var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
+
+	if player.gold < price:
 		_log("Pas assez d'or ! (%d requis)" % price)
 		return
+
 	if _selected.production_queue.size() >= MAX_QUEUE:
 		_log("File pleine !")
 		return
 
-	_gold[_cur] -= price
-	var bt : float = _build_time(unit_type)
-	# Si file vide, le premier entre directement en production avec son timer
-	_selected.production_queue.append({"unit_type": unit_type, "remaining": bt})
+	player.gold -= price
+
+	var bt: float = _build_time(unit_type)
+
+	_selected.production_queue.append({
+		"unit_type": unit_type,
+		"remaining": bt
+	})
+
 	_selected.unit_type = unit_type
+
 	_log("%s ajouté à la file de %s" % [unit_type, _selected.camp_name])
 	_refresh_ui()
-
 
 func _build_time(unit_type: String) -> float:
 	return UnitDefs.TYPES.get(unit_type, {}).get("build_time", 5.0)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# FIN DE TOUR
-# ─────────────────────────────────────────────────────────────────────────────
 func _on_end_turn() -> void:
-	_deselect()
-	_cur = 1 - _cur
-	if _cur == 0:
-		_turn += 1
-	_log("--- Tour de %s ---" % PLAYER_NAMES[_cur])
-	# Écran de transition entre les tours (cache la map à l'autre joueur)
-	if _ui.has_method("show_turn_screen"):
-		_ui.show_turn_screen(PLAYER_NAMES[_cur], _turn)
-	_refresh_ui()
+	pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -376,51 +507,72 @@ func _end_game(winner: int) -> void:
 	_game_over = true
 
 	# ── Calcul des stats finales ──────────────────────────────────────────────
-	var now       : float = Time.get_ticks_msec() / 1000.0
-	var duration  : float = now - _game_start_time
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var duration: float = now - _game_start_time
 
-	var camps_final : Array = [0, 0]
-	var inc_final   : Array = [0, 0]
+	var camps_final: int = 0
+	var income_final: int = 0
+
 	for c in _camps:
-		var oid : int = c.owner_id
-		if oid == 0 or oid == 1:
-			camps_final[oid] += 1
-			inc_final[oid]   += c.income_value
+		if c.owner_id == winner:
+			camps_final += 1
+			income_final += c.income_value
 
-	# Stats du vainqueur
-	var winner_stats : Dictionary = {
+	# Comme les joueurs sont maintenant 1 et 2,
+	# mais les tableaux commencent à 0, on convertit.
+	var winner_index: int = winner - 1
+
+	var camps_peak: int = 0
+	var income_peak: int = 0
+	var units_lost: int = 0
+
+	if winner_index >= 0 and winner_index < _camps_peak.size():
+		camps_peak = _camps_peak[winner_index]
+
+	if winner_index >= 0 and winner_index < _income_peak.size():
+		income_peak = _income_peak[winner_index]
+
+	if winner_index >= 0 and winner_index < _units_lost.size():
+		units_lost = _units_lost[winner_index]
+
+	var winner_stats: Dictionary = {
 		"duration_sec": duration,
-		"camps_peak":   _camps_peak[winner],
-		"camps_final":  camps_final[winner],
-		"income_peak":  _income_peak[winner],
-		"units_lost":   _units_lost[winner],
-	}
-	# Stats du perdant (l'autre joueur)
-	var loser : int = 1 - winner
-	var loser_stats : Dictionary = {
-		"duration_sec": duration,
-		"camps_peak":   _camps_peak[loser],
-		"camps_final":  camps_final[loser],
-		"income_peak":  _income_peak[loser],
-		"units_lost":   _units_lost[loser],
+		"camps_peak": camps_peak,
+		"camps_final": camps_final,
+		"income_peak": income_peak,
+		"income_final": income_final,
+		"units_lost": units_lost,
 	}
 
-	# UI : show_victory détecte automatiquement si le joueur local a gagné ou perdu
-	_ui.show_victory(PLAYER_NAMES[winner], _turn, winner_stats)
+	var winner_player = GameManager.find_player_by_id(winner)
+	var winner_name: String = winner_player.player_name if winner_player else "Joueur %d" % winner
 
+	# Le 2e argument doit être un int.
+	# On met 0 car le jeu n'est plus en tour par tour.
+	_ui.show_victory(winner_name, 0, winner_stats)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UI
 # ─────────────────────────────────────────────────────────────────────────────
 func _refresh_ui() -> void:
-	var inc : int = 0
-	var cnt : int = 0
+	var inc: int = 0
+	var cnt: int = 0
+
 	for c in _camps:
-		if c.owner_id == _cur:
+		if c.owner_id == local_player_id:
 			inc += c.income_value
 			cnt += 1
-	var sel_unit : String = _selected.unit_type if _selected else ""
-	_ui.update_hud(PLAYER_NAMES[_cur], _turn, _gold[_cur], inc, cnt, sel_unit, "", _cur)
+
+	var sel_unit: String = _selected.unit_type if _selected else ""
+
+	var player = GameManager.find_player_by_id(local_player_id)
+	var player_name: String = player.player_name if player else "Joueur"
+	var player_gold: int = player.gold if player else 0
+
+	# Le 2e paramètre doit rester un int.
+	# On met 0 pour remplacer l'ancien tour.
+	_ui.update_hud(player_name, 0, player_gold, inc, cnt, sel_unit, "", local_player_id)
+
 	_refresh_leaderboard()
 
 
@@ -541,7 +693,7 @@ func _draw_camps(canvas: Node2D) -> void:
 		map_data.get("has_water", false),
 		map_data.get("land_zones", []),
 		_game_over,
-		PLAYER_NAMES[1 - _cur] if _game_over else "")
+		PLAYER_NAMES[1 - local_player_id] if _game_over else "")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # OVERLAY — Node2D dédié au dessin des camps (z_index élevé)
