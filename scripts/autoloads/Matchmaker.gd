@@ -28,15 +28,34 @@ func _process(_delta: float) -> void:
 	match socket.get_ready_state():
 		WebSocketPeer.STATE_OPEN:
 			if not connected:
-				connected = true
+				connected          = true
+				_reconnect_pending = false
 				print("[Matchmaker] Connecte au serveur")
 				_send_pending()
 			while socket.get_available_packet_count() > 0:
 				_on_message(socket.get_packet().get_string_from_utf8())
+			# Timeout : si on attend une réponse trop longtemps
+			if _waiting_response:
+				_timeout_timer += _delta
+				if _timeout_timer >= TIMEOUT_DELAY:
+					_waiting_response = false
+					_timeout_timer    = 0.0
+					print("[Matchmaker] Timeout — pas de reponse du serveur")
+					matchmaker_error.emit()
 		WebSocketPeer.STATE_CLOSED:
 			if connected:
-				connected = false
+				connected          = false
+				_waiting_response  = false
+				_reconnect_pending = true
+				_reconnect_timer   = 0.0
 				print("[Matchmaker] Deconnecte")
+			# Reconnexion automatique si une action était en attente
+			if _reconnect_pending and not pending_action.is_empty():
+				_reconnect_timer += _delta
+				if _reconnect_timer >= RECONNECT_DELAY:
+					_reconnect_timer = 0.0
+					print("[Matchmaker] Tentative de reconnexion...")
+					_connect_to_server()
 
 func _connect_to_server() -> void:
 	match socket.get_ready_state():
@@ -135,14 +154,28 @@ func delete_room(room_name: String) -> void:
 	})
 	_connect_to_server()
 
+# ── TIMEOUT & RECONNEXION ─────────────────────────────────────────────────────
+
+const TIMEOUT_DELAY    := 10.0   # secondes avant d'émettre matchmaker_error
+const RECONNECT_DELAY  := 3.0    # secondes entre chaque tentative
+
+var _timeout_timer     := 0.0
+var _waiting_response  := false
+var _reconnect_timer   := 0.0
+var _reconnect_pending := false
+
 func _send_pending() -> void:
 	if pending_action.is_empty():
 		return
 	socket.send_text(pending_action)
 	print("[Matchmaker] Envoye : ", pending_action)
-	pending_action = ""
+	pending_action     = ""
+	_waiting_response  = true
+	_timeout_timer     = 0.0
 
 func _on_message(msg: String) -> void:
+	_waiting_response = false   # ← réponse reçue, on reset le timeout
+	_timeout_timer    = 0.0
 	print("[Matchmaker] Message recu : ", msg)
 	var data: Dictionary = JSON.parse_string(msg)
 	if data == null:
@@ -173,6 +206,7 @@ func _on_message(msg: String) -> void:
 			token_invalid.emit()
 		"error":
 			auth_error.emit(data.get("message", "Erreur inconnue"))
+			_waiting_response = false
 		"stats_updated":
 			stats_updated.emit()
 		"created":

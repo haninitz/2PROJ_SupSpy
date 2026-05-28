@@ -43,6 +43,7 @@ func _register_player(sender: int, room_id: String, mode: String,
 		"ready":      false
 	}
 	player_room[sender] = room_id
+	clear_client_timeout(sender)
 
 	print("[RoomManager] Joueur %d '%s' → room '%s' (team %s, ordre %d)" \
 		% [sender, player_name, room_id, team, join_order])
@@ -132,7 +133,7 @@ func _start_game(room_id: String) -> void:
 	#    puis l hote change de scene
 	await get_tree().process_frame
 	await get_tree().process_frame
-	SceneLoader.goto("res://scenes/Main.tscn")
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _broadcast_list(room_id: String) -> void:
 	if not rooms.has(room_id):
@@ -183,7 +184,7 @@ func _do_start(mode: String, format: String, diff: String,
 	GameConfig.players.clear()
 	for p in players_data:
 		GameConfig.players[p.id] = p
-	SceneLoader.goto("res://scenes/Main.tscn")
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _format_to_max(format: String) -> int:
 	match format:
@@ -191,3 +192,71 @@ func _format_to_max(format: String) -> int:
 		"2v2": return 4
 		"3v3": return 6
 	return 2
+
+# Gestion deconnexion hote
+
+signal host_left(room_id: String)
+
+func handle_host_left(room_id: String) -> void:
+	# Appelé si l'hôte (peer 1) quitte en cours de lobby
+	# Tous les clients sont renvoyés au menu principal
+	if not rooms.has(room_id):
+		return
+	print("[RoomManager] L'hote a quitte la room '%s'" % room_id)
+	_notify_host_left.rpc(room_id)
+	rooms.erase(room_id)
+	Matchmaker.delete_room(room_id)
+
+@rpc("authority", "reliable")
+func _notify_host_left(room_id: String) -> void:
+	print("[RoomManager] L'hote a quitte — retour au menu")
+	host_left.emit(room_id)
+	GameConfig.reset()
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+# Timeout client 
+
+signal client_timeout(peer_id: int)
+
+const JOIN_TIMEOUT := 15.0   # secondes max pour qu'un client rejoigne
+
+var _pending_clients: Dictionary = {}   # { peer_id: temps_ecoule }
+
+func start_client_timeout(peer_id: int) -> void:
+	_pending_clients[peer_id] = 0.0
+	print("[RoomManager] Timeout demarre pour peer %d" % peer_id)
+
+func _process(delta: float) -> void:
+	if not multiplayer.is_server():
+		return
+	for peer_id in _pending_clients.keys():
+		_pending_clients[peer_id] += delta
+		if _pending_clients[peer_id] >= JOIN_TIMEOUT:
+			_pending_clients.erase(peer_id)
+			print("[RoomManager] Peer %d timeout — kick" % peer_id)
+			client_timeout.emit(peer_id)
+			remove_player(peer_id)
+
+func clear_client_timeout(peer_id: int) -> void:
+	# Appelé quand le client a bien rejoint la room
+	_pending_clients.erase(peer_id)
+
+# Si les vérifications sont prets 
+
+func all_players_ready(room_id: String) -> bool:
+	if not rooms.has(room_id):
+		return false
+	for player in rooms[room_id].players.values():
+		if not player.get("ready", false):
+			return false
+	return true
+
+func get_player_count(room_id: String) -> int:
+	if not rooms.has(room_id):
+		return 0
+	return rooms[room_id].players.size()
+
+func is_room_full(room_id: String) -> bool:
+	if not rooms.has(room_id):
+		return false
+	return rooms[room_id].players.size() >= _format_to_max(rooms[room_id].format)
