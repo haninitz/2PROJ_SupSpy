@@ -12,40 +12,51 @@ func _ready() -> void: _build()
 
 func _build() -> void:
 	var bg := ColorRect.new()
-	bg.color = C_BG; bg.size = Vector2(1152, 720); add_child(bg)
+	bg.color = C_BG
+	bg.size = Vector2(1152, 720)
+	add_child(bg)
 
 	var panel := Panel.new()
-	panel.position = Vector2(1152.0/2 - 220, 720.0/2 - 240)
+	panel.position = Vector2(1152.0 / 2 - 220, 720.0 / 2 - 240)
 	panel.size = Vector2(440, 460)
 	panel.add_theme_stylebox_override("panel", _flat(C_BG, C_GOLD, 2, 14))
 	add_child(panel)
 
 	var title := Label.new()
 	title.text = "✦  NIVEAU DE L'IA  ✦"
-	title.position = Vector2(0, 36); title.size = Vector2(440, 50)
+	title.position = Vector2(0, 36)
+	title.size = Vector2(440, 50)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", C_GOLD)
 	panel.add_child(title)
 
-	_btn(panel, "★  RECRUE  (Facile)", Vector2(30, 120), C_CYAN).pressed.connect(
-		func(): GameConfig.diff = "easy"
-		       ; SceneLoader.goto("res://scenes/online/ChoixMap.tscn"))
+	var easy_btn := _btn(panel, "★  RECRUE  (Facile)", Vector2(30, 120), C_CYAN)
+	easy_btn.pressed.connect(func():
+		GameConfig.diff = "easy"
+		SceneLoader.goto("res://scenes/online/ChoixMap.tscn")
+	)
 	_desc(panel, "L'IA attaque rarement et recrute peu", Vector2(30, 174))
 
-	_btn(panel, "★★  AGENTE  (Moyen)", Vector2(30, 200), C_PURPLE).pressed.connect(
-		func(): GameConfig.diff = "med"
-		       ; SceneLoader.goto("res://scenes/online/ChoixMap.tscn"))
+	var med_btn := _btn(panel, "★★  AGENTE  (Moyen)", Vector2(30, 200), C_PURPLE)
+	med_btn.pressed.connect(func():
+		GameConfig.diff = "med"
+		SceneLoader.goto("res://scenes/online/ChoixMap.tscn")
+	)
 	_desc(panel, "L'IA gère ses troupes et sait attaquer", Vector2(30, 254))
 
-	_btn(panel, "★★★  SUPER AGENTE  (Difficile)", Vector2(30, 280), C_PINK).pressed.connect(
-		func(): GameConfig.diff = "hard"
-		       ; SceneLoader.goto("res://scenes/online/ChoixMap.tscn"))
+	var hard_btn := _btn(panel, "★★★  SUPER AGENTE  (Difficile)", Vector2(30, 280), C_PINK)
+	hard_btn.pressed.connect(func():
+		GameConfig.diff = "hard"
+		SceneLoader.goto("res://scenes/online/ChoixMap.tscn")
+	)
 	_desc(panel, "L'IA est agressive et optimise ses revenus", Vector2(30, 334))
 
-	_btn(panel, "← Retour", Vector2(30, 370), Color(0.30, 0.20, 0.45)).pressed.connect(
-		func(): SceneLoader.goto("res://scenes/online/ChoixMode.tscn"))
-
+	var back_btn := _btn(panel, "← Retour", Vector2(30, 370), Color(0.30, 0.20, 0.45))
+	back_btn.pressed.connect(func():
+		SceneLoader.goto("res://scenes/online/ChoixMode.tscn")
+	)
+	
 func _desc(parent: Control, text: String, pos: Vector2) -> void:
 	var l := Label.new()
 	l.text = text; l.position = pos; l.size = Vector2(380, 20)

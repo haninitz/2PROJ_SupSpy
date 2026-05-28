@@ -28,7 +28,7 @@ func _choose_unit_type(enemy_camps: Array) -> String:
 	for camp in enemy_camps:
 		var owner : int = _camp_owner(camp)
 		for unit in get_tree().get_nodes_in_group("units"):
-			if unit.owner_id == owner and unit.unit_type == Unit.UnitType.HEAVY:
+			if unit.owner_id == owner and unit.unit_type == Unit.UnitType.LOURD:
 				return "anti_armor"
 	var roll : float = randf()
 	if roll < 0.3:   return "infantry"
@@ -84,10 +84,10 @@ func _activate_spells() -> void:
 		if not is_instance_valid(unit) or unit.spell_cooldown > 0.0:
 			continue
 		match unit.unit_type:
-			Unit.UnitType.SUPPORT:
+			Unit.UnitType.SOUTIEN:
 				if _count_enemies_near(unit.global_position, 200.0) > 0:
 					unit.activate_turbo_boost()
-			Unit.UnitType.HEALER:
+			Unit.UnitType.SOIGNEUR:
 				if _has_hurt_allies_near(unit.global_position, 150.0):
 					unit.activate_compowder_heal()
 
