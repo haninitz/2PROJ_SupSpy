@@ -41,11 +41,16 @@ var camps           : Array :   # alias public pour minimap.gd
 	get: return _camps
 var _gold           : Array = [150, 150]
 var local_player_id: int = 1
+var _ai_enabled: bool = false
+var _ai_player_id: int = 2
+var _ai_timer: float = 0.0
+var _ai_interval: float = 3.0
 var _selected       : Node  = null # Camp sélectionné
 var _map_index      : int   = 0
 var _game_over      : bool  = false
 var _income_timer   : float = 0.0
 var _overlay        : CampOverlay = null
+
 
 # ── Statistiques de fin de partie ────────────────────────────────────────────
 var _game_start_time : float = 0.0
@@ -96,6 +101,11 @@ func _on_map_selected(index: int) -> void:
 func _start_game() -> void:
 	_game_over = false
 	local_player_id = 1
+
+	_ai_enabled =true
+	_ai_player_id = 2
+	_ai_timer = 0.0
+
 	_selected = null
 	_income_timer = 0.0
 	_game_start_time = Time.get_ticks_msec() / 1000.0
@@ -180,7 +190,14 @@ func _process(delta: float) -> void:
 				camp.production_queue[0]["remaining"] = _build_time(camp.production_queue[0]["unit_type"])
 			_refresh_ui()
 
-	if _overlay: _overlay.queue_redraw()
+	if _ai_enabled:
+		_ai_timer += delta
+		if _ai_timer >= _ai_interval:
+			_ai_timer = 0.0
+			_run_ai_tick()
+
+	if _overlay: 
+		_overlay.queue_redraw()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -250,7 +267,7 @@ func _deselect() -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # COMBAT
 # ─────────────────────────────────────────────────────────────────────────────
-func _do_attack(src: Node, tgt: Node) -> void:
+func _do_attack(src: Node, tgt: Node, deselect_after: bool = true) -> void:
 	var old_owner : int = tgt.owner_id
 
 	# Passe les nodes directement à Combat.resolve
@@ -262,7 +279,9 @@ func _do_attack(src: Node, tgt: Node) -> void:
 	else:
 		_log("✗ Attaque sur %s repoussée" % tgt.camp_name)
 
-	_deselect()
+	if deselect_after:
+
+		_deselect()
 
 
 func _camp_to_dict(camp: Node) -> Dictionary:
@@ -277,7 +296,119 @@ func _camp_to_dict(camp: Node) -> Dictionary:
 		"queue"    : []
 	}
 
+#ia
+func _run_ai_tick() -> void:
+	if _game_over:
+		return
 
+	var ai_player = GameManager.find_player_by_id(_ai_player_id)
+	if ai_player == null:
+		print("[AI DEBUG] Joueur IA introuvable")
+		return
+
+	var ai_camps: Array = []
+	var targets: Array = []
+
+	for camp in _camps:
+		if camp.owner_id == _ai_player_id:
+			ai_camps.append(camp)
+		else:
+			targets.append(camp)
+
+	print("[AI DEBUG] camps IA = ", ai_camps.size(), " | targets = ", targets.size())
+
+	if ai_camps.is_empty() or targets.is_empty():
+		return
+
+	_ai_recruit(ai_player, ai_camps)
+	_ai_attack(ai_camps, targets)
+
+
+func _ai_recruit(ai_player, ai_camps: Array) -> void:
+	var unit_choices: Array = ["infantry", "range", "heavy"]
+
+	var available_camps: Array = []
+
+	for camp in ai_camps:
+		if camp.production_queue.size() < MAX_QUEUE:
+			available_camps.append(camp)
+
+	if available_camps.is_empty():
+		return
+
+	var camp = available_camps.pick_random()
+
+	var affordable_units: Array = []
+
+	for unit_type in unit_choices:
+		var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
+		if ai_player.gold >= price:
+			affordable_units.append(unit_type)
+
+	if affordable_units.is_empty():
+		return
+
+	var chosen_unit: String = affordable_units.pick_random()
+	var price: int = UnitDefs.TYPES.get(chosen_unit, {}).get("price", 50)
+
+	ai_player.gold -= price
+
+	camp.production_queue.append({
+		"unit_type": chosen_unit,
+		"remaining": _build_time(chosen_unit)
+	})
+
+	camp.unit_type = chosen_unit
+
+	_log("IA recrute %s à %s" % [chosen_unit, camp.camp_name])
+	_refresh_ui()
+
+
+func _ai_attack(ai_camps: Array, targets: Array) -> void:
+	var possible_attackers: Array = []
+
+	for camp in ai_camps:
+		if camp.units > 1:
+			possible_attackers.append(camp)
+
+	if possible_attackers.is_empty():
+		return
+
+	var attacker = possible_attackers.pick_random()
+	var target = _ai_find_best_target(attacker, targets)
+
+	if target == null:
+		return
+
+	_log("IA attaque %s depuis %s" % [target.camp_name, attacker.camp_name])
+	_do_attack(attacker, target, false)
+
+
+func _ai_find_best_target(attacker: Node, targets: Array) -> Node:
+	var best_target: Node = null
+	var best_score: float = INF
+
+	for target in targets:
+		if target == null:
+			continue
+
+		if target.owner_id == _ai_player_id:
+			continue
+
+		var distance: float = attacker.global_position.distance_to(target.global_position)
+		var defense_score: float = float(target.units) * 40.0
+		var neutral_penalty: float = 0.0
+
+		if target.owner_id == 0:
+			neutral_penalty = 80.0
+
+		var score: float = distance + defense_score + neutral_penalty
+
+		if score < best_score:
+			best_score = score
+			best_target = target
+
+	return best_target
 # ─────────────────────────────────────────────────────────────────────────────
 # RECRUTEMENT
 # ─────────────────────────────────────────────────────────────────────────────
