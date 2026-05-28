@@ -1,6 +1,18 @@
 [gd_scene format=3 uid="uid://c5p2iv4nhyoee"]
 
 [ext_resource type="Script" uid="uid://ccxy8bxeu5xim" path="res://scripts/units/Fantassin.gd" id="1_1pjsb"]
+[ext_resource type="Texture2D" uid="uid://8drw3aihni0q" path="res://assets/sprites/fantassin.png" id="2_a3vdi"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_5wsmh"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_a3vdi")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_5xatw"]
 
@@ -10,7 +22,8 @@ radius = 40.0
 [node name="Fantassin" type="CharacterBody2D" unique_id=2027463266]
 script = ExtResource("1_1pjsb")
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1466157300]
+[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=2096325406]
+sprite_frames = SubResource("SpriteFrames_5wsmh")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=919498849]
 shape = SubResource("CapsuleShape2D_5xatw")
