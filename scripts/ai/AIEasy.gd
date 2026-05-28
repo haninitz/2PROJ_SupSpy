@@ -11,20 +11,25 @@ func think() -> void:
 
 func _produce_units() -> void:
 	for camp in get_my_camps():
-		produce_unit_at(camp, "infantry")
+		if _camp_is_producing(camp):
+			continue
+		if player.can_afford(50):
+			produce_unit_at(camp, "infantry")
 
 func _attack_random() -> void:
-	var my_units : Array = get_my_units()
-	if my_units.is_empty():
+	var my_camps : Array = get_my_camps()
+	if my_camps.is_empty():
 		return
 
 	var targets : Array = get_enemy_camps() + get_neutral_camps()
 	if targets.is_empty():
 		return
 
-	var target_camp = targets[randi() % targets.size()]
-	var pos : Vector2 = _camp_pos(target_camp)
+	var sources : Array = my_camps.filter(func(c): return c.units > 1)
+	if sources.is_empty():
+		return
 
-	for unit in my_units:
-		if is_instance_valid(unit):
-			unit.move_to(pos)
+	var source = sources[randi() % sources.size()]
+	var target = targets[randi() % targets.size()]
+
+	Combat.resolve(source, target)

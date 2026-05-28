@@ -15,35 +15,56 @@ func think() -> void:
 	_decide_action()
 
 func _produce_units() -> void:
-	var my_camps : Array = get_my_camps()
-	for camp in my_camps:
-		if not is_instance_valid(camp) or camp.is_producing:
+	for camp in get_my_camps():
+		if _camp_is_producing(camp):
 			continue
 		var unit_type : String = "infantry" if randf() < 0.6 else "range"
-		produce_unit_at(camp, unit_type)
+		var price : int = 50 if unit_type == "infantry" else 75
+		if player.can_afford(price):
+			produce_unit_at(camp, unit_type)
 
 func _decide_action() -> void:
-	var my_units : Array = get_my_units()
-	if my_units.is_empty():
-		return
-
-	# Priority 1 — complete a region for bonus
-	var region_camp = _find_region_completion_target()
-	if region_camp != null:
-		var target_pos : Vector2 = region_camp["pos"] if region_camp is Dictionary else region_camp.global_position
-		_send_units_to(my_units, target_pos)
-		return
-
-	# Priority 2 — attack nearest enemy camp
 	var my_camps : Array = get_my_camps()
 	if my_camps.is_empty():
 		return
+		
+	var sources : Array = my_camps.filter(func(c): return c.units > 1)
+	if sources.is_empty():
+		return
+		
+	# Priority 1 — complete a region for bonus
+	var region_target = _find_region_completion_target()
+	if region_target != null:
+		var best_source = _get_strongest_camp(sources)
+		if best_source:
+			Combat.resolve(best_source, region_target)
+		return
 
-	var center : Vector2 = _get_center(my_camps)
-	var target = get_nearest_camp(center, get_enemy_camps() + get_neutral_camps())
-	if target != null:
-		var pos : Vector2 = target["pos"] if target is Dictionary else target.global_position
-		_send_units_to(my_units, pos)
+	# Priority 2 — attack nearest enemy camp
+	var neutral_targets : Array = get_neutral_camps()
+	if not neutral_targets.is_empty():
+		var weakest_neutral = _get_weakest_camp(neutral_targets)
+		var nearest_source  = _get_nearest_source(sources, _camp_pos(weakest_neutral))
+		if nearest_source:
+			Combat.resolve(nearest_source, weakest_neutral)
+		return
+
+	# Priorité 3 — attaquer le camp ennemi le plus faible
+	var enemy_targets : Array = get_enemy_camps()
+	if enemy_targets.is_empty():
+		return
+
+	var weakest_enemy = _get_weakest_camp(enemy_targets)
+	if weakest_enemy == null:
+		return
+
+	# N'attaque que si on a clairement l'avantage (plus d'unités que l'ennemi)
+	var best_source = _get_strongest_camp(sources)
+	if best_source == null:
+		return
+
+	if best_source.units > weakest_enemy.units:
+		Combat.resolve(best_source, weakest_enemy)
 
 func _find_region_completion_target():
 	var gm = get_node_or_null("/root/GameManager")
@@ -60,19 +81,31 @@ func _find_region_completion_target():
 			return missing[0]
 	return null
 
-func _send_units_to(units: Array, pos: Vector2) -> void:
-	for unit in units:
-		if is_instance_valid(unit):
-			unit.move_to(pos)
-
-func _get_center(camps: Array) -> Vector2:
-	var sum   := Vector2.ZERO
-	var count : int = 0
+func _get_weakest_camp(camps: Array):
+	var weakest = null
+	var min_units : int = INF
 	for camp in camps:
-		if camp is Dictionary:
-			sum += camp["pos"]
-			count += 1
-		elif is_instance_valid(camp):
-			sum += camp.global_position
-			count += 1
-	return sum / count if count > 0 else Vector2.ZERO
+		if is_instance_valid(camp) and camp.units < min_units:
+			min_units = camp.units
+			weakest = camp
+	return weakest
+	
+func _get_strongest_camp(camps: Array):
+	var best = null
+	var best_units : int = 0
+	for camp in camps:
+		if is_instance_valid(camp) and camp.units > best_units:
+			best_units = camp.units
+			best = camp
+	return best
+	
+func _get_nearest_source(sources: Array, target_pos: Vector2):
+	var nearest = null
+	var nearest_dist : float = INF
+	for camp in sources:
+		if is_instance_valid(camp):
+			var dist : float = _camp_pos(camp).distance_to(target_pos)
+			if dist < nearest_dist:
+				nearest_dist = dist
+				nearest = camp
+	return nearest
