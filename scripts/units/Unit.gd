@@ -186,11 +186,27 @@ func _physics_process(_delta: float) -> void:
 	if not is_alive:
 		return
 	if nav_agent.is_navigation_finished():
+		_play_anim("idle")
 		return
-	var next_pos: Vector2 = nav_agent.get_next_path_position()
-	var direction: Vector2 = global_position.direction_to(next_pos)
+	var next_pos = nav_agent.get_next_path_position()
+	var direction = global_position.direction_to(next_pos)
+	if abs(direction.x) > abs(direction.y):
+		if direction.x > 0:
+			_play_anim("walk_right")
+		else:
+			_play_anim("walk_left")
+	else:
+		if direction.y > 0:
+			_play_anim("walk_down")
+		else:
+			_play_anim("walk_up")
 	velocity = direction * speed
 	move_and_slide()
+
+func _play_anim(anim_name: String) -> void:
+	var sprite = get_node_or_null("Sprite2D")
+	if sprite and sprite.sprite_frames and sprite.sprite_frames.has_animation(anim_name):
+		sprite.play(anim_name)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COMBAT — détection automatique + attaque
