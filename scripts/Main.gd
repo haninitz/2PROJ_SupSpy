@@ -69,18 +69,12 @@ var _units_lost      : Array = [0, 0]
 func _ready() -> void:
 	add_to_group("main_node")
 	_ui = $UI
-
-	if GameConfig.mode == "ai" or GameConfig.mode == "multi":
-		var map_idx : int = 0
-		match GameConfig.map:
-			"clover": map_idx = 0
-			"sam":    map_idx = 1
-			"alex":   map_idx = 2
-		await get_tree().process_frame
-		_ui.start_from_online(map_idx)
-		# Pas de return — on continue pour connecter les signaux
-	
-	call_deferred("_connect_ui")
+	# Les signaux doivent être connectés AVANT que le splash émette map_selected.
+	# UI._ready() tourne avant Main._ready() (enfant avant parent en Godot 4),
+	# donc _ui est déjà initialisé ici.
+	# Le splash (UI._ready) appelle _on_splash_finished() → start_from_online()
+	# → map_selected.emit() → _on_map_selected() → _start_game() ✓
+	_connect_ui()
 
 
 func _connect_ui() -> void:
@@ -101,17 +95,10 @@ func _on_map_selected(index: int) -> void:
 func _start_game() -> void:
 	_game_over = false
 
-	# En multi : convertir le peer_id ENet (aléatoire) en player_id de jeu (1 ou 2)
-	# via le join_order stocké dans GameConfig.players
+	# En multi : hote = joueur 1 (red), client = joueur 2 (blue)
 	if GameConfig.mode == "multi":
-		var my_data = GameConfig.players.get(GameConfig.my_peer_id, null)
-		if my_data != null:
-			# join_order 0 → joueur 1 (hote), join_order 1 → joueur 2 (client)
-			local_player_id = my_data.get("join_order", 0) + 1
-		else:
-			# Fallback : hote=1, client=2
-			local_player_id = 1 if GameConfig.is_host else 2
-		print("[Main] local_player_id = %d (peer_id=%d)" % [local_player_id, GameConfig.my_peer_id])
+		local_player_id = 1 if GameConfig.is_host else 2
+		print("[Main] local_player_id = %d  is_host = %s" % [local_player_id, GameConfig.is_host])
 	else:
 		local_player_id = 1
 
@@ -155,6 +142,13 @@ func _start_game() -> void:
 		add_child(camp)
 		_camps.append(camp)
 	GameManager.start_game_with_camps(_camps)
+
+	# Assignation aléatoire — uniquement chez l hote (ou en mode solo/IA)
+	if GameConfig.mode != "multi" or GameConfig.is_host:
+		_randomize_camp_owners()
+		# En multi : broadcaster l état randomisé immédiatement au client
+		if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
+			_broadcast_state()
 
 	_refresh_ui()
 	# Crée/recycle l'overlay de dessin (z_index haut = au-dessus des TileMaps)
@@ -299,41 +293,68 @@ func _deselect() -> void:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COMBAT
+# L attaquant calcule le résultat (randi unique) et envoie le résultat exact
+# à tous les peers. Pas de recalcul côté client (évite la divergence rng).
 # ─────────────────────────────────────────────────────────────────────────────
 func _do_attack(src: Node, tgt: Node, deselect_after: bool = true) -> void:
 	var src_idx : int = _camps.find(src)
 	var tgt_idx : int = _camps.find(tgt)
-
-	# En multi : envoyer le RPC aux autres peers ET résoudre localement
-	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
-		_rpc_attack.rpc(src_idx, tgt_idx)  # envoie aux autres (pas a soi-meme)
-
-	# Résoudre localement dans tous les cas
-	_resolve_attack(src_idx, tgt_idx, deselect_after)
-
-@rpc("any_peer", "reliable")
-func _rpc_attack(src_idx: int, tgt_idx: int) -> void:
-	if src_idx < 0 or src_idx >= _camps.size(): return
-	if tgt_idx < 0 or tgt_idx >= _camps.size(): return
-	_resolve_attack(src_idx, tgt_idx, false)
-
-func _resolve_attack(src_idx: int, tgt_idx: int, deselect_after: bool) -> void:
-	if src_idx < 0 or src_idx >= _camps.size(): return
-	if tgt_idx < 0 or tgt_idx >= _camps.size(): return
-	var src : Node = _camps[src_idx]
-	var tgt : Node = _camps[tgt_idx]
 	var old_owner : int = tgt.owner_id
 
+	# Calcul local (aléatoire, une seule fois chez l attaquant)
 	Combat.resolve(src, tgt)
 
-	if tgt.owner_id != old_owner:
+	# En multi : envoyer le RÉSULTAT (pas les paramètres) à tous les peers
+	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
+		_rpc_sync_attack_result.rpc(
+			src_idx, tgt_idx,
+			src.owner_id, src.units, src.unit_type,
+			tgt.owner_id, tgt.units, tgt.unit_type
+		)
+
+	var captured : bool = (tgt.owner_id != old_owner)
+	if captured:
 		_log("✓ %s capturé !" % tgt.camp_name)
 		_check_victory()
 	else:
 		_log("✗ Attaque sur %s repoussée" % tgt.camp_name)
-
 	if deselect_after:
 		_deselect()
+	if _overlay: _overlay.queue_redraw()
+
+
+@rpc("any_peer", "reliable")
+func _rpc_sync_attack_result(
+		src_idx: int, tgt_idx: int,
+		src_owner: int, src_units: int, src_type: String,
+		tgt_owner: int, tgt_units: int, tgt_type: String) -> void:
+	# Le peer distant applique directement le résultat reçu (sans recalcul rng)
+	if src_idx < 0 or src_idx >= _camps.size(): return
+	if tgt_idx < 0 or tgt_idx >= _camps.size(): return
+	var src = _camps[src_idx]
+	var tgt = _camps[tgt_idx]
+	var old_owner : int = tgt.owner_id
+
+	src.units     = src_units
+	src.unit_type = src_type
+	src.owner_id  = src_owner
+
+	var new_owner_different : bool = (tgt_owner != old_owner)
+	if new_owner_different and tgt.has_method("change_owner"):
+		tgt.change_owner(tgt_owner)
+	else:
+		tgt.owner_id = tgt_owner
+	tgt.units     = tgt_units
+	tgt.unit_type = tgt_type
+	if new_owner_different:
+		tgt.production_queue = []
+
+	if new_owner_different:
+		_log("✓ %s capturé !" % tgt.camp_name)
+		_check_victory()
+	else:
+		_log("✗ Attaque repoussée")
+	if _overlay: _overlay.queue_redraw()
 
 
 func _camp_to_dict(camp: Node) -> Dictionary:
@@ -522,6 +543,85 @@ func _resolve_recruit(camp_idx: int, unit_type: String) -> void:
 
 
 # =============================================================================
+#  ASSIGNATION ALÉATOIRE DES CAMPS
+#  Règle sujet : chaque joueur reçoit le même nombre de camps aléatoirement,
+#  sans qu aucun joueur ne possède une région entière dès le départ.
+# =============================================================================
+func _randomize_camp_owners() -> void:
+	var map_data : Dictionary = MapDefs.MAPS[_map_index]
+	var regions  : Array      = map_data.get("regions", [])
+
+	# 1. Identifier les camps assignables (owner != 0 dans MapDefs = prévus pour joueurs)
+	var assignable : Array = []
+	for i in range(_camps.size()):
+		var d = map_data["camps"][i]
+		if d.get("owner", 0) != 0:
+			assignable.append(i)
+
+	if assignable.is_empty():
+		return
+
+	# 2. Mélanger aléatoirement
+	assignable.shuffle()
+
+	# 3. Distribuer également entre les joueurs actifs
+	var player_ids : Array = []
+	for p in GameManager.players:
+		player_ids.append(p.id)
+
+	var num_players   : int = player_ids.size()
+	if num_players == 0:
+		return
+
+	var camps_pp : int = assignable.size() / num_players
+
+	for p_idx in range(num_players):
+		var pid : int = player_ids[p_idx]
+		for j in range(camps_pp):
+			var ci : int = assignable[p_idx * camps_pp + j]
+			var camp = _camps[ci]
+			camp.owner_id = pid
+			if camp.has_method("change_owner"):
+				camp.change_owner(pid)
+
+	# 4. Les camps restants (si nombre impair) → neutres
+	for k in range(num_players * camps_pp, assignable.size()):
+		var ci  : int  = assignable[k]
+		var camp = _camps[ci]
+		camp.owner_id = 0
+		if camp.has_method("change_owner"):
+			camp.change_owner(0)
+
+	# 5. Vérifier qu aucun joueur ne possède une région entière dès le départ
+	_fix_complete_regions(regions)
+	print("[Main] Camps randomisés : ", assignable.size(), " camps pour ", num_players, " joueurs")
+
+
+func _fix_complete_regions(regions: Array) -> void:
+	for region in regions:
+		var camp_indices : Array = region.get("camps", [])
+		if camp_indices.size() < 2:
+			continue
+		# Vérifier si tous les camps de la région ont le même propriétaire non-neutre
+		var first_owner : int = _camps[camp_indices[0]].owner_id
+		if first_owner == 0:
+			continue
+		var all_same : bool = true
+		for ci in camp_indices:
+			if ci >= _camps.size() or _camps[ci].owner_id != first_owner:
+				all_same = false
+				break
+		if all_same:
+			# Rendre le dernier camp de la région neutre pour casser le bonus
+			var last_ci : int = camp_indices[camp_indices.size() - 1]
+			var camp    = _camps[last_ci]
+			camp.owner_id = 0
+			if camp.has_method("change_owner"):
+				camp.change_owner(0)
+			print("[Main] Région '%s' brisée — camp %d → neutre" % [region.get("name","?"), last_ci])
+
+
+# =============================================================================
 #  SYNC MULTIJOUEUR — broadcast d état complet depuis l hote
 # =============================================================================
 
@@ -620,19 +720,35 @@ func _region_owner(camp_indices: Array) -> int:
 # ─────────────────────────────────────────────────────────────────────────────
 # VICTOIRE
 # ─────────────────────────────────────────────────────────────────────────────
+@rpc("any_peer", "reliable")
+func _rpc_show_end_game(winner: int) -> void:
+	if _game_over:
+		return
+	_game_over = true
+	var wp = GameManager.find_player_by_id(winner)
+	var wn = wp.player_name if wp else "Joueur %d" % winner
+	_ui.show_victory(wn, 0, {})
+
+
 func _check_victory() -> void:
-	var has := [false, false]
+	var p1_has_camp := false
+	var p2_has_camp := false
 	for c in _camps:
 		if not is_instance_valid(c):
 			continue
-		if c.owner_id == 0: has[0] = true
-		elif c.owner_id == 1: has[1] = true
-	if not has[0]: _end_game(1)
-	elif not has[1]: _end_game(0)
+		if c.owner_id == 1:   p1_has_camp = true
+		elif c.owner_id == 2: p2_has_camp = true
+	if not p1_has_camp:   _end_game(2)  # joueur 2 gagne
+	elif not p2_has_camp: _end_game(1)  # joueur 1 gagne
 
 
 func _end_game(winner: int) -> void:
+	if _game_over:
+		return
 	_game_over = true
+	# Sync l écran de fin sur tous les peers
+	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
+		_rpc_show_end_game.rpc(winner)
 
 	# ── Calcul des stats finales ──────────────────────────────────────────────
 	var now: float = Time.get_ticks_msec() / 1000.0
@@ -784,8 +900,8 @@ func _spawn_unit(unit_type: String, camp: Node) -> void:
 	# Tracker la mort de l'unité pour les stats de fin
 	var oid : int = camp.owner_id
 	unit.tree_exiting.connect(func():
-		if oid == 0 or oid == 1:
-			_units_lost[oid] += 1)
+		if oid >= 1 and oid <= 2:
+			_units_lost[oid - 1] += 1)
 
 
 func _log(msg: String) -> void:

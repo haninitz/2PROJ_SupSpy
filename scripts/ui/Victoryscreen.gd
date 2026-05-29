@@ -90,11 +90,19 @@ func _animate_victory(t: float) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 
 func show_victory(winner_name: String, turns: int, stats: Dictionary = {}) -> void:
-	# Vérifie si c'est le joueur local qui gagne
-	var gm = _parent.get_node_or_null("/root/GameManager")
+	# Vérifie si c'est le joueur LOCAL qui gagne
+	# On cherche local_player_id dans Main pour trouver le bon joueur
+	var gm   = _parent.get_node_or_null("/root/GameManager")
+	var main = _parent.get_tree().get_first_node_in_group("main_node")
+	var local_player_id : int = 1
+	if main and "local_player_id" in main:
+		local_player_id = main.local_player_id
+
 	var local_name : String = ""
-	if gm and gm.get("players") and gm.players.size() > 0:
-		local_name = gm.players[0].player_name
+	if gm and gm.has_method("find_player_by_id"):
+		var lp = gm.find_player_by_id(local_player_id)
+		if lp:
+			local_name = lp.player_name
 
 	if local_name != "" and local_name != winner_name:
 		show_defeat(winner_name, turns, stats)
