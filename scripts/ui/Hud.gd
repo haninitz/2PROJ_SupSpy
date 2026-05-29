@@ -303,6 +303,31 @@ func _build_selection_panel() -> void:
 	spell_button.pressed.connect(_on_spell_pressed)
 	selection_panel.add_child(spell_button)
 
+	# Barre de cooldown (fond + remplissage)
+	var cd_bg := ColorRect.new()
+	cd_bg.name     = "CooldownBg"
+	cd_bg.color    = Color(0.12, 0.08, 0.22, 0.95)
+	cd_bg.position = Vector2(300, 32)
+	cd_bg.size     = Vector2(90, 5)
+	selection_panel.add_child(cd_bg)
+
+	var cd_fg := ColorRect.new()
+	cd_fg.name     = "CooldownFg"
+	cd_fg.color    = U.C_CYAN
+	cd_fg.position = Vector2(300, 32)
+	cd_fg.size     = Vector2(0, 5)
+	selection_panel.add_child(cd_fg)
+
+	var cd_lbl := Label.new()
+	cd_lbl.name     = "CooldownLbl"
+	cd_lbl.position = Vector2(296, 38)
+	cd_lbl.size     = Vector2(98, 14)
+	cd_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cd_lbl.add_theme_font_size_override("font_size", 9)
+	cd_lbl.add_theme_color_override("font_color", U.C_CYAN)
+	cd_lbl.visible = false
+	selection_panel.add_child(cd_lbl)
+
 	# Séparateur
 	var div := ColorRect.new()
 	div.color    = Color(U.C_PINK.r, U.C_PINK.g, U.C_PINK.b, 0.35)
@@ -511,14 +536,40 @@ func update_selection_panel(selected_units: Array) -> void:
 	# En-tête
 	unit_count_label.text = "✦  %d unité(s) sélectionnée(s)" % selected_units.size()
 
-	# Bouton spell
+	# Bouton spell + cooldown
 	var has_spell : bool = false
+	var spell_unit = null
 	for u in selected_units:
 		if is_instance_valid(u) and u.get("unit_type") in [
 				Unit.UnitType.SOUTIEN, Unit.UnitType.SOIGNEUR]:
 			has_spell = true
+			spell_unit = u
 			break
 	spell_button.visible = has_spell
+
+	# Mise à jour barre cooldown
+	var cd_fg  : ColorRect = selection_panel.get_node_or_null("CooldownFg")
+	var cd_lbl : Label     = selection_panel.get_node_or_null("CooldownLbl")
+	if cd_fg and cd_lbl and has_spell and is_instance_valid(spell_unit):
+		var cd_remain : float = spell_unit.get("spell_cooldown_remaining") \
+			if spell_unit.get("spell_cooldown_remaining") != null else 0.0
+		var cd_total  : float = spell_unit.get("spell_cooldown_max") \
+			if spell_unit.get("spell_cooldown_max") != null else 1.0
+		var on_cd : bool = cd_remain > 0.01
+		if on_cd:
+			var ratio : float = clamp(cd_remain / max(cd_total, 0.01), 0.0, 1.0)
+			cd_fg.size.x = 90.0 * (1.0 - ratio)
+			cd_fg.color  = Color(0.80, 0.30, 0.10)
+			cd_lbl.text  = "CD %.1fs" % cd_remain
+			cd_lbl.visible = true
+			spell_button.disabled = true
+			spell_button.add_theme_color_override("font_color", Color(0.50, 0.40, 0.60))
+		else:
+			cd_fg.size.x = 90.0
+			cd_fg.color  = U.C_CYAN
+			cd_lbl.visible = false
+			spell_button.disabled = false
+			spell_button.add_theme_color_override("font_color", U.C_CYAN)
 
 	# Stats détaillées si 1 seule unité
 	if selected_units.size() == 1:

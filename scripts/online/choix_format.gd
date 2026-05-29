@@ -1,5 +1,6 @@
 extends Control
 # choix_format.gd — SupKonQuest · Totally Spies
+# Choix du nombre de joueurs pour la room (2 à 8)
 
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)
@@ -17,6 +18,7 @@ func _build() -> void:
 	bg.size = Vector2(1152, 720)
 	add_child(bg)
 
+	# Décorations étoiles
 	for i in range(18):
 		var s := Label.new()
 		s.text = ["✦","✧","★","◆"][i % 4]
@@ -27,80 +29,105 @@ func _build() -> void:
 		add_child(s)
 
 	var panel := Panel.new()
-	panel.position = Vector2(1152.0/2 - 220, 720.0/2 - 240)
-	panel.size = Vector2(440, 460)
+	panel.position = Vector2(1152.0/2 - 260, 720.0/2 - 280)
+	panel.size = Vector2(520, 520)
 	panel.add_theme_stylebox_override("panel", _flat(C_BG, C_PINK, 2, 14))
 	add_child(panel)
 
 	var title := Label.new()
-	title.text = "✦  FORMAT DE MISSION  ✦"
+	title.text = "✦  NOMBRE DE JOUEURS  ✦"
 	title.position = Vector2(0, 36)
-	title.size = Vector2(440, 50)
+	title.size = Vector2(520, 50)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", C_PINK)
 	panel.add_child(title)
 
+	var sub := Label.new()
+	sub.text = "Choisis combien de joueurs participent à la mission"
+	sub.position = Vector2(0, 84)
+	sub.size = Vector2(520, 20)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_color_override("font_color", Color(0.65, 0.50, 0.80))
+	panel.add_child(sub)
+
 	var div := ColorRect.new()
 	div.color = Color(C_PINK.r, C_PINK.g, C_PINK.b, 0.30)
-	div.position = Vector2(30, 94)
-	div.size = Vector2(380, 1)
+	div.position = Vector2(30, 110)
+	div.size = Vector2(460, 1)
 	panel.add_child(div)
 
-	var btn_1v1 := _btn(panel, "✦  1 VS 1  —  Duel d'agentes", Vector2(30, 115), C_PINK)
-	btn_1v1.pressed.connect(func(): _select("1v1"))
-	_desc(panel, "Face a face — la mission la plus intense", Vector2(30, 169))
+	# Boutons 2 à 8 joueurs — 2 rangées : [2,3,4,5] et [6,7,8]
+	var colors : Array[Color] = [
+		C_CYAN, C_PINK, C_PURPLE, C_GOLD,
+		C_CYAN, C_PINK, C_PURPLE
+	]
+	var descs : Array[String] = [
+		"2 joueurs", "3 joueurs", "4 joueurs", "5 joueurs",
+		"6 joueurs", "7 joueurs", "8 joueurs"
+	]
 
-	var btn_2v2 := _btn(panel, "✦  2 VS 2  —  Equipes de choc", Vector2(30, 195), C_PURPLE)
-	btn_2v2.pressed.connect(func(): _select("2v2"))
-	_desc(panel, "Coordonne-toi avec ton equipiere", Vector2(30, 249))
+	for i in range(7):
+		var nb : int = i + 2  # 2..8
+		var col : Color = colors[i]
+		var row : int = i / 4
+		var col_i : int = i % 4
+		var btn_w : float = 104.0
+		var btn_x : float = 30.0 + col_i * 115.0
+		# Centrer la dernière rangée (3 boutons)
+		if row == 1:
+			btn_x = 30.0 + (col_i * 115.0) + 57.0
 
-	var btn_3v3 := _btn(panel, "✦  3 VS 3  —  Guerre totale", Vector2(30, 275), C_CYAN)
-	btn_3v3.pressed.connect(func(): _select("3v3"))
-	_desc(panel, "Le plus grand affrontement W.O.O.H.P", Vector2(30, 329))
+		var b := Button.new()
+		b.text = "%d\njoueurs" % nb
+		b.position = Vector2(btn_x, 128 + row * 148)
+		b.size = Vector2(btn_w, 80)
+		b.add_theme_font_size_override("font_size", 20)
+		b.add_theme_stylebox_override("normal",
+			_flat(Color(col.r*0.18, col.g*0.18, col.b*0.18), col, 2, 8))
+		b.add_theme_stylebox_override("hover",
+			_flat(Color(col.r*0.32, col.g*0.32, col.b*0.32), col, 2, 8))
+		b.add_theme_color_override("font_color", C_WHITE)
+		var n : int = nb
+		b.pressed.connect(func(): _select(n))
+		panel.add_child(b)
 
-	var btn_back := _btn(panel, "← Retour", Vector2(30, 375), Color(0.30, 0.20, 0.45))
+		var desc_lbl := Label.new()
+		desc_lbl.text = descs[i]
+		desc_lbl.position = Vector2(btn_x, 128 + row * 148 + 84)
+		desc_lbl.size = Vector2(btn_w, 16)
+		desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		desc_lbl.add_theme_font_size_override("font_size", 9)
+		desc_lbl.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.80))
+		panel.add_child(desc_lbl)
+
+	var btn_back := _btn(panel, "← Retour", Vector2(30, 452), Color(0.30, 0.20, 0.45))
 	btn_back.pressed.connect(_on_back_pressed)
 
-func _select(f: String) -> void:
-	GameConfig.format = f
+func _select(nb: int) -> void:
+	GameConfig.format = str(nb)
 	SceneLoader.goto("res://scenes/online/ChoixMap.tscn")
 
 func _on_back_pressed() -> void:
 	SceneLoader.goto("res://scenes/online/ChoixMode.tscn")
 
-func _desc(parent: Control, text: String, pos: Vector2) -> void:
-	var l := Label.new()
-	l.text = text
-	l.position = pos
-	l.size = Vector2(380, 20)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.add_theme_font_size_override("font_size", 11)
-	l.add_theme_color_override("font_color", Color(0.65, 0.50, 0.80))
-	parent.add_child(l)
-
 func _flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
 	s.border_color = border
-	s.border_width_left = bw
-	s.border_width_right = bw
-	s.border_width_top = bw
-	s.border_width_bottom = bw
-	s.corner_radius_top_left = cr
-	s.corner_radius_top_right = cr
-	s.corner_radius_bottom_left = cr
-	s.corner_radius_bottom_right = cr
+	s.border_width_left = bw; s.border_width_right = bw
+	s.border_width_top = bw; s.border_width_bottom = bw
+	s.corner_radius_top_left = cr; s.corner_radius_top_right = cr
+	s.corner_radius_bottom_left = cr; s.corner_radius_bottom_right = cr
 	return s
 
 func _btn(parent: Control, text: String, pos: Vector2, col: Color) -> Button:
 	var b := Button.new()
-	b.text = text
-	b.position = pos
-	b.size = Vector2(380, 52)
+	b.text = text; b.position = pos; b.size = Vector2(460, 46)
 	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_stylebox_override("normal", _flat(Color(col.r*0.18, col.g*0.18, col.b*0.18), col, 2, 8))
-	b.add_theme_stylebox_override("hover", _flat(Color(col.r*0.32, col.g*0.32, col.b*0.32), col, 2, 8))
+	b.add_theme_stylebox_override("normal", _flat(Color(col.r*0.18,col.g*0.18,col.b*0.18), col, 2, 8))
+	b.add_theme_stylebox_override("hover",  _flat(Color(col.r*0.32,col.g*0.32,col.b*0.32), col, 2, 8))
 	b.add_theme_color_override("font_color", C_WHITE)
 	parent.add_child(b)
 	return b

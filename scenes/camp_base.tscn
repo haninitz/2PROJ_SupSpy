@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://bbq2y4b0l2gcc" path="res://scripts/Camp.gd" id="1_reiu6"]
 [ext_resource type="Script" uid="uid://cg647u43wkph8" path="res://scripts/Tourelle.gd" id="2_n7chk"]
 
-
 [sub_resource type="CircleShape2D" id="CircleShape2D_yj377"]
 radius = 42.0
 

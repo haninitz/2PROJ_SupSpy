@@ -576,13 +576,38 @@ func _open_settings() -> void:
 				if lang: lang.current = captured_lc
 				_rebuild())
 			scr.add_child(lb)
-		scr.add_child(U.lbl(U.lt("volume") + " :", Vector2(55, 210), 13, U.C_CYAN))
+		scr.add_child(U.lbl("Sound Volume :", Vector2(55, 210), 13, U.C_CYAN))
 		var sv : HSlider = HSlider.new()
 		sv.position = Vector2(55, 232); sv.size = Vector2(350, 22)
 		sv.min_value = 0; sv.max_value = 100; sv.value = 80
 		sv.value_changed.connect(func(v: float):
 			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), linear_to_db(v / 100.0)))
-		scr.add_child(sv))
+		scr.add_child(sv)
+
+		scr.add_child(U.lbl("Music Volume :", Vector2(55, 270), 13, U.C_CYAN))
+		var mv : HSlider = HSlider.new()
+		mv.position = Vector2(55, 292); mv.size = Vector2(350, 22)
+		mv.min_value = 0; mv.max_value = 100; mv.value = 50
+		mv.value_changed.connect(func(v: float):
+			var bus_idx : int = AudioServer.get_bus_index("Music")
+			if bus_idx >= 0:
+				AudioServer.set_bus_volume_db(bus_idx, linear_to_db(v / 100.0)))
+		scr.add_child(mv)
+
+		scr.add_child(U.lbl("Display :", Vector2(55, 330), 13, U.C_GOLD))
+		var disp_labels : Array[String] = ["Fullscreen", "Windowed", "Borderless"]
+		for i in range(3):
+			var db : Button = U.btn(disp_labels[i], Vector2(55 + i * 148, 354), Vector2(134, 34), 12)
+			db.add_theme_stylebox_override("normal", U.flat(Color(0.14,0.10,0.04), U.C_GOLD, 2, 6))
+			db.add_theme_color_override("font_color", U.C_WHITE)
+			match i:
+				0: db.pressed.connect(func():
+					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN))
+				1: db.pressed.connect(func():
+					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED))
+				2: db.pressed.connect(func():
+					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED))
+			scr.add_child(db))
 
 
 func _open_overlay(title: String, col: Color, builder: Callable) -> void:

@@ -115,6 +115,8 @@ func _process(delta: float) -> void:
 #  TURRET
 # ─────────────────────────────────────────
 func _process_turret(delta: float) -> void:
+	if turret_area == null:
+		return
 	if _turret_target == null or not is_instance_valid(_turret_target):
 		_turret_target = _find_nearest_enemy()
 		if _turret_target == null:
@@ -126,6 +128,8 @@ func _process_turret(delta: float) -> void:
 		_fire_at(_turret_target)
 
 func _find_nearest_enemy() -> Node:
+	if turret_area == null:
+		return null
 	var nearest      : Node  = null
 	var nearest_dist : float = INF
 	for body in turret_area.get_overlapping_bodies():

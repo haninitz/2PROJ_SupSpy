@@ -18,14 +18,18 @@ var wins:     int    = 0
 var losses:   int    = 0
 
 func get_max_players() -> int:
+	# Format peut être "2".."8" (nb joueurs) ou legacy "1v1","2v2","3v3","4v4"
+	if format.is_valid_int():
+		return clamp(int(format), 2, 8)
 	match format:
 		"1v1": return 2
 		"2v2": return 4
 		"3v3": return 6
+		"4v4": return 8
 	return 2
 
 func get_players_per_team() -> int:
-	return get_max_players() / 2 as int
+	return get_max_players()
 
 func reset() -> void:
 	mode       = ""
