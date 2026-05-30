@@ -73,7 +73,14 @@ func _create_players() -> void:
 		var team: Dictionary = available_teams[team_index]
 
 		var p = PlayerScript.new()
-		p.setup(i + 1, team["name"], team["color"])
+		var is_ai_player : bool = (GameConfig.mode == "ai" and i > 0)
+		var ai_lvl : int = 0
+		if is_ai_player:
+			match GameConfig.diff:
+				"easy": ai_lvl = 1
+				"med":  ai_lvl = 2
+				"hard": ai_lvl = 3
+		p.setup(i + 1, team["name"], team["color"], is_ai_player, ai_lvl)
 		players.append(p)
 
 func _assign_starting_camps() -> void:
