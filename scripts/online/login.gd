@@ -1,6 +1,10 @@
 extends Control
 # login.gd — SupKonQuest · Totally Spies Online
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)
 const C_PURPLE := Color(0.55, 0.15, 0.85)
@@ -46,7 +50,7 @@ func _build() -> void:
 
 	# Badge
 	var badge := Label.new()
-	badge.text = "W.O.O.H.P · CONNEXION"
+	badge.text = _lt("login_badge")
 	badge.position = Vector2(0, 22); badge.size = Vector2(440, 22)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	badge.add_theme_font_size_override("font_size", 11)
@@ -54,7 +58,7 @@ func _build() -> void:
 	panel.add_child(badge)
 
 	var title := Label.new()
-	title.text = "✦  AGENT LOGIN  ✦"
+	title.text = _lt("login_title")
 	title.position = Vector2(0, 46); title.size = Vector2(440, 55)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 32)
@@ -66,19 +70,19 @@ func _build() -> void:
 	div.position = Vector2(30, 108); div.size = Vector2(380, 1)
 	panel.add_child(div)
 
-	_lbl(panel, "Nom d'agent", Vector2(30, 122))
+	_lbl(panel, _lt("login_username"), Vector2(30, 122))
 	_input_username = _make_input(panel, "username", Vector2(30, 142), false)
 
-	_lbl(panel, "Code secret", Vector2(30, 200))
+	_lbl(panel, _lt("login_password"), Vector2(30, 200))
 	_input_password = _make_input(panel, "••••••••", Vector2(30, 220), true)
 
-	_btn_login = _btn(panel, "→  ENTRER EN MISSION", Vector2(30, 295), C_PINK)
+	_btn_login = _btn(panel, _lt("login_btn"), Vector2(30, 295), C_PINK)
 	_btn_login.pressed.connect(_on_login_pressed)
 
-	_btn(panel, "Créer un compte agent", Vector2(30, 360), C_PURPLE).pressed.connect(
+	_btn(panel, _lt("login_register"), Vector2(30, 360), C_PURPLE).pressed.connect(
 		func(): SceneLoader.goto("res://scenes/online/Register.tscn"))
 
-	_btn(panel, "← Retour", Vector2(30, 415), Color(0.30, 0.20, 0.45)).pressed.connect(
+	_btn(panel, _lt("back"), Vector2(30, 415), Color(0.30, 0.20, 0.45)).pressed.connect(
 		func(): SceneLoader.goto("res://scenes/Main.tscn"))
 
 	_status = Label.new()

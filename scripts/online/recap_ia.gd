@@ -5,6 +5,12 @@ const C_BG := Color(0.04, 0.02, 0.10); const C_PINK := Color(1.00, 0.20, 0.58)
 const C_PURPLE := Color(0.55, 0.15, 0.85); const C_GOLD := Color(1.00, 0.85, 0.20)
 const C_WHITE := Color(1.00, 1.00, 1.00)
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	if u and u.has_method("lt"):
+		return u.lt(key)
+	return key
+
 func _ready() -> void: _build()
 
 func _build() -> void:
@@ -13,7 +19,7 @@ func _build() -> void:
 	panel.position = Vector2(1152.0/2-220, 720.0/2-220); panel.size = Vector2(440, 420)
 	panel.add_theme_stylebox_override("panel", _flat(C_BG, C_GOLD, 2, 14)); add_child(panel)
 
-	var title := Label.new(); title.text = "✦  RÉCAP MISSION  ✦"
+	var title := Label.new(); title.text = _lt("recap_title")
 	title.position = Vector2(0, 30); title.size = Vector2(440, 50)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
@@ -24,9 +30,9 @@ func _build() -> void:
 
 	var diff_label := _get_diff_label()
 	var rows := [
-		["Mode", "VS Intelligence Artificielle", C_PURPLE],
-		["Difficulté", diff_label, C_PINK],
-		["Map", GameConfig.map.to_upper(), C_GOLD],
+		[_lt("recap_mode"), _lt("recap_vs_ai"), C_PURPLE],
+		[_lt("recap_diff"), diff_label,          C_PINK],
+		[_lt("recap_map"),  GameConfig.map.to_upper(), C_GOLD],
 	]
 	var y := 108
 	for row in rows:
@@ -40,16 +46,16 @@ func _build() -> void:
 		val.add_theme_color_override("font_color", row[2]); panel.add_child(val)
 		y += 42
 
-	_btn(panel, "→  LANCER LA MISSION", Vector2(30, 290), C_PINK).pressed.connect(
+	_btn(panel, _lt("recap_launch"), Vector2(30, 290), C_PINK).pressed.connect(
 		func(): _on_lancer_pressed())
-	_btn(panel, "← Retour", Vector2(30, 352), Color(0.30, 0.20, 0.45)).pressed.connect(
+	_btn(panel, _lt("back"), Vector2(30, 352), Color(0.30, 0.20, 0.45)).pressed.connect(
 		func(): SceneLoader.goto("res://scenes/online/ChoixMap.tscn"))
 
 func _get_diff_label() -> String:
 	match GameConfig.diff:
-		"easy": return "Recrue (Facile)"
-		"med":  return "Agente (Moyen)"
-		"hard": return "Super Agente (Difficile)"
+		"easy": return _lt("diff_easy_label")
+		"med":  return _lt("diff_med_label")
+		"hard": return _lt("diff_hard_label")
 	return GameConfig.diff
 
 func _flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:

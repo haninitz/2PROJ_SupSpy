@@ -758,7 +758,7 @@ func _rpc_show_end_game(winner: int) -> void:
 	if wp == null:
 		wn = "Joueur %d" % winner
 	elif wp.is_ai:
-		var _dn := ["IA", "IA — Facile", "IA — Moyen", "IA — Difficile"]
+		var _dn : Array = ["IA", "IA — " + UIUtils.lt("diff_easy"), "IA — " + UIUtils.lt("diff_med"), "IA — " + UIUtils.lt("diff_hard")]
 		wn = _dn[wp.ai_level] if wp.ai_level < _dn.size() else "IA"
 	else:
 		wn = wp.player_name
@@ -828,7 +828,7 @@ func _end_game(winner: int) -> void:
 	if winner_player == null:
 		winner_name = "Joueur %d" % winner
 	elif winner_player.is_ai:
-		var _dn := ["IA", "IA — Facile", "IA — Moyen", "IA — Difficile"]
+		var _dn : Array = ["IA", "IA — " + UIUtils.lt("diff_easy"), "IA — " + UIUtils.lt("diff_med"), "IA — " + UIUtils.lt("diff_hard")]
 		winner_name = _dn[winner_player.ai_level] if winner_player.ai_level < _dn.size() else "IA"
 	else:
 		winner_name = winner_player.player_name

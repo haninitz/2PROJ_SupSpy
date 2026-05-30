@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://c80872atwh65e"]
+
+[ext_resource type="Script" uid="uid://c8c2c3aom37jl" path="res://scripts/online/choix_map.gd" id="1_qdovo"]
+
+[node name="ChoixMap" type="Control" unique_id=19207561]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_qdovo")

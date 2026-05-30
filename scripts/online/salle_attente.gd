@@ -1,5 +1,9 @@
 extends Control
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 # ── Couleurs ──────────────────────────────────────────────────────────────────
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)
@@ -227,7 +231,7 @@ func _build() -> void:
 	panel.add_theme_stylebox_override("panel", _flat(C_BG, C_PINK, 2, 14))
 	add_child(panel)
 
-	var title := Label.new(); title.text = "✦  SALLE D'ATTENTE  ✦"
+	var title := Label.new(); title.text = _lt("lobby_title")
 	title.position = Vector2(0, 22); title.size = Vector2(600, 46)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 26)
@@ -246,13 +250,13 @@ func _build() -> void:
 	div.position = Vector2(30, 98); div.size = Vector2(540, 1)
 	panel.add_child(div)
 
-	var team_a_lbl := Label.new(); team_a_lbl.text = "✦ Équipe A"
+	var team_a_lbl := Label.new(); team_a_lbl.text = _lt("lobby_team_a")
 	team_a_lbl.position = Vector2(30, 110); team_a_lbl.size = Vector2(240, 28)
 	team_a_lbl.add_theme_font_size_override("font_size", 16)
 	team_a_lbl.add_theme_color_override("font_color", C_PINK)
 	panel.add_child(team_a_lbl)
 
-	var team_b_lbl := Label.new(); team_b_lbl.text = "✦ Équipe B"
+	var team_b_lbl := Label.new(); team_b_lbl.text = _lt("lobby_team_b")
 	team_b_lbl.position = Vector2(330, 110); team_b_lbl.size = Vector2(240, 28)
 	team_b_lbl.add_theme_font_size_override("font_size", 16)
 	team_b_lbl.add_theme_color_override("font_color", C_PURPLE)
@@ -266,7 +270,7 @@ func _build() -> void:
 	_slots_b.position = Vector2(330, 144); _slots_b.size = Vector2(240, 200)
 	panel.add_child(_slots_b)
 
-	_btn_lancer = Button.new(); _btn_lancer.text = "→  LANCER LA MISSION"
+	_btn_lancer = Button.new(); _btn_lancer.text = _lt("lobby_launch")
 	_btn_lancer.position = Vector2(30, 420); _btn_lancer.size = Vector2(540, 52)
 	_btn_lancer.add_theme_font_size_override("font_size", 16)
 	_btn_lancer.add_theme_stylebox_override("normal", _flat(Color(0.20, 0.04, 0.12), C_PINK,   2, 8))
@@ -275,7 +279,7 @@ func _build() -> void:
 	_btn_lancer.pressed.connect(_on_lancer_pressed)
 	panel.add_child(_btn_lancer)
 
-	var btn_quitter := Button.new(); btn_quitter.text = "← Quitter la mission"
+	var btn_quitter := Button.new(); btn_quitter.text = _lt("lobby_quit")
 	btn_quitter.position = Vector2(30, 484); btn_quitter.size = Vector2(540, 44)
 	btn_quitter.add_theme_stylebox_override("normal", _flat(Color(0.12, 0.08, 0.18), C_PURPLE, 2, 8))
 	btn_quitter.add_theme_color_override("font_color", C_WHITE)

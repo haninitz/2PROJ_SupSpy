@@ -11,9 +11,17 @@ extends CanvasLayer
 signal resumed
 signal quit_to_menu
 
-var _panel  : Panel
-var _active : bool = false
-var U       : Node
+var _panel       : Panel
+var _active      : bool = false
+var U            : Node
+# Références pour mise à jour dynamique de la langue
+var _title_lbl   : Label
+var _sub_lbl     : Label
+var _hint_lbl    : Label
+var _btn_resume  : Button
+var _btn_options : Button
+var _btn_menu    : Button
+var _btn_quit    : Button
 
 
 func setup(u: Node) -> void:
@@ -40,16 +48,15 @@ func _build() -> void:
 	add_child(_panel)
 
 	# Titre
-	var title : Label = U.lbl("— PAUSE —", Vector2(0, 28), 28, U.C_PINK)
-	title.size = Vector2(400, 50)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_panel.add_child(title)
+	_title_lbl      = U.lbl(U.lt("pause_title"), Vector2(0, 28), 28, U.C_PINK)
+	_title_lbl.size = Vector2(400, 50)
+	_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_panel.add_child(_title_lbl)
 
-	var sub : Label = U.lbl("W.O.O.H.P · Mission en attente",
-		Vector2(0, 68), 11, Color(0.55, 0.40, 0.70))
-	sub.size = Vector2(400, 20)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_panel.add_child(sub)
+	_sub_lbl      = U.lbl(U.lt("pause_sub"), Vector2(0, 68), 11, Color(0.55, 0.40, 0.70))
+	_sub_lbl.size = Vector2(400, 20)
+	_sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_panel.add_child(_sub_lbl)
 
 	# Diviseur
 	var div := ColorRect.new()
@@ -58,33 +65,37 @@ func _build() -> void:
 	div.size     = Vector2(340, 1)
 	_panel.add_child(div)
 
-	# Boutons
-	var buttons := [
-		{"t": "▶  Reprendre",       "col": U.C_PINK,   "fn": func(): resume()},
-		{"t": "⚙  Options",         "col": U.C_CYAN,   "fn": func(): _open_options()},
-		{"t": "↺  Menu principal",  "col": U.C_GOLD,   "fn": func(): _go_to_menu()},
-		{"t": "✕  Quitter le jeu",  "col": Color(0.70, 0.20, 0.20), "fn": func(): get_tree().quit()},
+	# Boutons (stockés pour mise à jour dynamique)
+	var btn_defs := [
+		{"key": "pause_resume",  "col": U.C_PINK,              "fn": func(): resume(),         "ref": "_btn_resume"},
+		{"key": "pause_options", "col": U.C_CYAN,              "fn": func(): _open_options(),  "ref": "_btn_options"},
+		{"key": "pause_menu",    "col": U.C_GOLD,              "fn": func(): _go_to_menu(),    "ref": "_btn_menu"},
+		{"key": "pause_quit",    "col": Color(0.70, 0.20, 0.20),"fn": func(): get_tree().quit(),"ref": "_btn_quit"},
 	]
 
-	for i in range(buttons.size()):
-		var bd : Dictionary = buttons[i]
-		var b : Button = U.btn(bd["t"], Vector2(50, 118 + i * 58), Vector2(300, 46), 16)
+	for i in range(btn_defs.size()):
+		var bd : Dictionary = btn_defs[i]
+		var col : Color = bd["col"]
+		var b : Button = U.btn(U.lt(bd["key"]), Vector2(50, 118 + i * 58), Vector2(300, 46), 16)
 		b.add_theme_stylebox_override("normal",
-			U.flat(Color(bd["col"].r*0.15, bd["col"].g*0.15, bd["col"].b*0.15),
-				   bd["col"], 2, 8))
+			U.flat(Color(col.r*0.15, col.g*0.15, col.b*0.15), col, 2, 8))
 		b.add_theme_stylebox_override("hover",
-			U.flat(Color(bd["col"].r*0.28, bd["col"].g*0.28, bd["col"].b*0.28),
-				   bd["col"], 2, 8))
+			U.flat(Color(col.r*0.28, col.g*0.28, col.b*0.28), col, 2, 8))
 		b.add_theme_color_override("font_color", U.C_WHITE)
 		b.pressed.connect(bd["fn"])
 		_panel.add_child(b)
+		# Stocke la référence dans la variable membre correspondante
+		match bd["ref"]:
+			"_btn_resume":  _btn_resume  = b
+			"_btn_options": _btn_options = b
+			"_btn_menu":    _btn_menu    = b
+			"_btn_quit":    _btn_quit    = b
 
 	# Raccourci ESC affiché
-	var hint : Label = U.lbl("ESC — reprendre", Vector2(0, 350), 10,
-		Color(0.40, 0.30, 0.55))
-	hint.size = Vector2(400, 20)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_panel.add_child(hint)
+	_hint_lbl      = U.lbl(U.lt("pause_hint"), Vector2(0, 350), 10, Color(0.40, 0.30, 0.55))
+	_hint_lbl.size = Vector2(400, 20)
+	_hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_panel.add_child(_hint_lbl)
 
 	visible = false
 
@@ -99,9 +110,17 @@ func toggle() -> void:
 
 
 func pause() -> void:
-	_active              = true
-	visible              = true
-	get_tree().paused    = true
+	_active           = true
+	visible           = true
+	get_tree().paused = true
+	# Mise à jour texte selon langue courante
+	if _title_lbl:   _title_lbl.text   = U.lt("pause_title")
+	if _sub_lbl:     _sub_lbl.text     = U.lt("pause_sub")
+	if _hint_lbl:    _hint_lbl.text    = U.lt("pause_hint")
+	if _btn_resume:  _btn_resume.text  = U.lt("pause_resume")
+	if _btn_options: _btn_options.text = U.lt("pause_options")
+	if _btn_menu:    _btn_menu.text    = U.lt("pause_menu")
+	if _btn_quit:    _btn_quit.text    = U.lt("pause_quit")
 
 
 func resume() -> void:
@@ -124,7 +143,7 @@ func _open_options() -> void:
 	add_child(scr)
 
 	# Titre
-	var title : Label = U.lbl("⚙  OPTIONS", Vector2(0, 22), 22, U.C_CYAN)
+	var title : Label = U.lbl(U.lt("opt_title"), Vector2(0, 22), 22, U.C_CYAN)
 	title.size = Vector2(600, 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	scr.add_child(title)
@@ -135,7 +154,7 @@ func _open_options() -> void:
 	scr.add_child(div)
 
 	# Langue
-	scr.add_child(U.lbl("Language:", Vector2(40, 80), 13, U.C_PINK))
+	scr.add_child(U.lbl(U.lt("opt_language"), Vector2(40, 80), 13, U.C_PINK))
 	var lang_codes  : Array[String] = ["fr", "en", "es"]
 	var lang_labels : Array[String] = ["🇫🇷 FR", "🇬🇧 EN", "🇪🇸 ES"]
 	for i in range(3):
@@ -151,7 +170,7 @@ func _open_options() -> void:
 		scr.add_child(lb)
 
 	# Volume son
-	scr.add_child(U.lbl("Sound Volume:", Vector2(40, 155), 13, U.C_CYAN))
+	scr.add_child(U.lbl(U.lt("opt_sound"), Vector2(40, 155), 13, U.C_CYAN))
 	var sv : HSlider = HSlider.new()
 	sv.position = Vector2(40, 177); sv.size = Vector2(520, 22)
 	sv.min_value = 0; sv.max_value = 100; sv.value = 80
@@ -162,7 +181,7 @@ func _open_options() -> void:
 	scr.add_child(sv)
 
 	# Volume musique
-	scr.add_child(U.lbl("Music Volume:", Vector2(40, 215), 13, U.C_CYAN))
+	scr.add_child(U.lbl(U.lt("opt_music"), Vector2(40, 215), 13, U.C_CYAN))
 	var mv : HSlider = HSlider.new()
 	mv.position = Vector2(40, 237); mv.size = Vector2(520, 22)
 	mv.min_value = 0; mv.max_value = 100; mv.value = 50
@@ -174,7 +193,7 @@ func _open_options() -> void:
 	scr.add_child(mv)
 
 	# Affichage
-	scr.add_child(U.lbl("Display:", Vector2(40, 278), 13, U.C_GOLD))
+	scr.add_child(U.lbl(U.lt("opt_display"), Vector2(40, 278), 13, U.C_GOLD))
 	var disp_labels : Array[String] = ["Fullscreen", "Windowed", "Borderless"]
 	for i in range(3):
 		var db : Button = U.btn(disp_labels[i],
@@ -193,7 +212,7 @@ func _open_options() -> void:
 		scr.add_child(db)
 
 	# Bouton fermer
-	var close : Button = U.btn("✕  Fermer", Vector2(200, 415), Vector2(200, 42), 15)
+	var close : Button = U.btn(U.lt("opt_close"), Vector2(200, 415), Vector2(200, 42), 15)
 	close.process_mode = Node.PROCESS_MODE_ALWAYS
 	close.add_theme_stylebox_override("normal",
 		U.flat(Color(0.15,0.05,0.05), U.C_PINK, 2, 8))
@@ -204,5 +223,6 @@ func _open_options() -> void:
 
 func _go_to_menu() -> void:
 	get_tree().paused = false
+	GameConfig.mode   = ""   # empêche l'auto-démarrage au rechargement
 	get_tree().reload_current_scene()
 	quit_to_menu.emit()

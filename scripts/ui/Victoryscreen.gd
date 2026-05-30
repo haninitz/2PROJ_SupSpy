@@ -30,7 +30,17 @@ var victory_sparkles : Array = []
 var _confetti_pieces : Array = []
 
 # ── Écran défaite ─────────────────────────────────────────────────────────────
-var defeat_screen  : Panel
+var defeat_screen      : Panel
+var _defeat_title_lbl  : Label
+var _defeat_badge_lbl  : Label
+var _defeat_sub_lbl    : Label
+var _defeat_try_btn    : Button
+var _defeat_quit_btn   : Button
+# ── Écran victoire (labels dynamiques) ───────────────────────────────────────
+var _victory_badge_lbl : Label
+var _victory_sub_lbl   : Label
+var _victory_play_btn  : Button
+var _victory_quit_btn  : Button
 
 # ── Écran tour ────────────────────────────────────────────────────────────────
 var turn_screen       : Panel
@@ -108,10 +118,18 @@ func show_victory(winner_name: String, turns: int, stats: Dictionary = {}) -> vo
 		show_defeat(winner_name, turns, stats)
 		return
 
-	victory_winner.text    = winner_name
+	victory_winner.text     = winner_name
 	victory_winner.modulate = U.C_PINK
+	# Mise à jour texte selon langue courante
+	if victory_title:
+		victory_title.text = U.lt("victory_scr_title")
+	if _victory_sub_lbl:
+		_victory_sub_lbl.text = U.lt("agent_secured")
+	if _victory_play_btn:
+		_victory_play_btn.text = U.lt("play_again")
+	if _victory_quit_btn:
+		_victory_quit_btn.text = U.lt("quit_btn")
 
-	# Remplir le panneau stats
 	_fill_stats_panel(victory_screen, winner_name, turns, stats, true)
 
 	victory_screen.visible = true
@@ -119,11 +137,21 @@ func show_victory(winner_name: String, turns: int, stats: Dictionary = {}) -> vo
 
 
 func show_defeat(winner_name: String, turns: int, stats: Dictionary = {}) -> void:
+	# Mise à jour texte selon langue courante
+	if _defeat_title_lbl:
+		_defeat_title_lbl.text = U.lt("defeat_scr_title")
+	if _defeat_sub_lbl:
+		_defeat_sub_lbl.text = U.lt("territory_lost")
+	if _defeat_try_btn:
+		_defeat_try_btn.text = U.lt("try_again")
+	if _defeat_quit_btn:
+		_defeat_quit_btn.text = U.lt("quit_btn")
+
 	defeat_screen.visible = true
 
 	var sub : Label = defeat_screen.get_node_or_null("WinnerLabel")
 	if sub:
-		sub.text = "%s a remporté la victoire" % winner_name
+		sub.text = U.lt("won_victory") % winner_name
 
 	_fill_stats_panel(defeat_screen, winner_name, turns, stats, false)
 
@@ -169,33 +197,27 @@ func _fill_stats_panel(screen: Panel, winner_name: String,
 		dur_str = "%dm %02ds" % [int(dur_sec) / 60, int(dur_sec) % 60]
 	else:
 		dur_str = "%.0f s" % dur_sec
-	_add_stat_row(container, "⏱  Durée",   dur_str,   accent)
+	_add_stat_row(container, U.lt("stat_duration"), dur_str, accent)
 
-	# ── Ligne tours ───────────────────────────────────────────────────────────
-	_add_stat_row(container, "🔄  Tours",  str(turns), accent)
+	_add_stat_row(container, U.lt("stat_turns"), str(turns), accent)
 
-	# ── Camps au pic ─────────────────────────────────────────────────────────
 	var peak : int = stats.get("camps_peak", 0)
 	if peak > 0:
-		_add_stat_row(container, "🏠  Camps max", str(peak), accent)
+		_add_stat_row(container, U.lt("stat_camps_peak"), str(peak), accent)
 
-	# ── Camps à la fin ────────────────────────────────────────────────────────
 	var final_camps : int = stats.get("camps_final", 0)
 	if final_camps > 0:
-		_add_stat_row(container, "🏁  Camps finaux", str(final_camps), accent)
+		_add_stat_row(container, U.lt("stat_camps_final"), str(final_camps), accent)
 
-	# ── Revenu au pic ─────────────────────────────────────────────────────────
 	var inc_peak : int = stats.get("income_peak", 0)
 	if inc_peak > 0:
-		_add_stat_row(container, "💰  Revenu max", "+%d G/tick" % inc_peak, accent)
+		_add_stat_row(container, U.lt("stat_income_peak"), "+%d G/tick" % inc_peak, accent)
 
-	# ── Unités perdues ────────────────────────────────────────────────────────
 	var lost : int = stats.get("units_lost", 0)
 	if lost > 0:
-		_add_stat_row(container, "💀  Unités perdues", str(lost), accent)
+		_add_stat_row(container, U.lt("stat_units_lost"), str(lost), accent)
 
-	# ── Vainqueur ─────────────────────────────────────────────────────────────
-	_add_stat_row(container, "🏆  Vainqueur", winner_name,
+	_add_stat_row(container, U.lt("stat_winner"), winner_name,
 		U.C_GOLD if is_victory else Color(0.80, 0.50, 0.50))
 
 
@@ -248,12 +270,12 @@ func _build_victory_screen() -> void:
 		U.flat(Color(0.08, 0.04, 0.18), U.C_PINK, 3, 16))
 	victory_screen.add_child(panel)
 
-	U.add_badge(victory_screen, "MISSION  COMPLETE",
+	U.add_badge(victory_screen, U.lt("mission_complete"),
 		Vector2(U.WIN_W / 2 - 100, 88), Vector2(200, 26), U.C_PINK)
 
 	# Titre animé
 	victory_title          = Label.new()
-	victory_title.text     = "✦  VICTORY  ✦"
+	victory_title.text     = U.lt("victory_scr_title")
 	victory_title.position = Vector2(U.WIN_W / 2 - 360, 122)
 	victory_title.size     = Vector2(720, 80)
 	victory_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -269,9 +291,9 @@ func _build_victory_screen() -> void:
 	victory_winner.add_theme_font_size_override("font_size", 30)
 	victory_screen.add_child(victory_winner)
 
-	victory_screen.add_child(U.lbl(
-		"Agent has secured all territories",
-		Vector2(U.WIN_W / 2 - 360, 258), 13, Color(0.70, 0.55, 0.85)))
+	_victory_sub_lbl = U.lbl(U.lt("agent_secured"),
+		Vector2(U.WIN_W / 2 - 360, 258), 13, Color(0.70, 0.55, 0.85))
+	victory_screen.add_child(_victory_sub_lbl)
 
 	# Séparateur stats
 	var div := ColorRect.new()
@@ -289,21 +311,21 @@ func _build_victory_screen() -> void:
 	victory_screen.add_child(stats_container)
 
 	# Boutons
-	var rb : Button = U.btn("↺  Play Again",
+	_victory_play_btn = U.btn(U.lt("play_again"),
 		Vector2(U.WIN_W / 2 - 240, 620), Vector2(200, 50), 18)
-	rb.add_theme_stylebox_override("normal",
+	_victory_play_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.28, 0.05, 0.18), U.C_PINK, 2, 10))
-	rb.add_theme_color_override("font_color", U.C_WHITE)
-	rb.pressed.connect(func(): _parent.get_tree().reload_current_scene())
-	victory_screen.add_child(rb)
+	_victory_play_btn.add_theme_color_override("font_color", U.C_WHITE)
+	_victory_play_btn.pressed.connect(func(): _parent.get_tree().reload_current_scene())
+	victory_screen.add_child(_victory_play_btn)
 
-	var qb : Button = U.btn("✕  Quit",
+	_victory_quit_btn = U.btn(U.lt("quit_btn"),
 		Vector2(U.WIN_W / 2 + 40, 620), Vector2(200, 50), 18)
-	qb.add_theme_stylebox_override("normal",
+	_victory_quit_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.18, 0.05, 0.05), Color(0.70, 0.20, 0.20), 2, 10))
-	qb.add_theme_color_override("font_color", U.C_WHITE)
-	qb.pressed.connect(func(): _parent.get_tree().quit())
-	victory_screen.add_child(qb)
+	_victory_quit_btn.add_theme_color_override("font_color", U.C_WHITE)
+	_victory_quit_btn.pressed.connect(func(): _parent.get_tree().quit())
+	victory_screen.add_child(_victory_quit_btn)
 
 	# Étoiles orbitales
 	var shapes : Array[String] = ["✦","✧","◆","✶","⋆"]
@@ -351,12 +373,13 @@ func _build_defeat_screen() -> void:
 		U.flat(Color(0.10, 0.02, 0.02), Color(0.60, 0.10, 0.10), 3, 16))
 	defeat_screen.add_child(panel)
 
-	U.add_badge(defeat_screen, "MISSION  FAILED",
+	U.add_badge(defeat_screen, U.lt("mission_failed"),
 		Vector2(U.WIN_W / 2 - 100, 88), Vector2(200, 26), Color(0.65, 0.12, 0.12))
 
 	# Titre
-	var title := Label.new()
-	title.text     = "✖  DEFEAT  ✖"
+	_defeat_title_lbl = Label.new()
+	var title := _defeat_title_lbl
+	title.text     = U.lt("defeat_scr_title")
 	title.position = Vector2(U.WIN_W / 2 - 360, 122)
 	title.size     = Vector2(720, 80)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -375,9 +398,9 @@ func _build_defeat_screen() -> void:
 	sub.modulate = Color(0.75, 0.45, 0.45)
 	defeat_screen.add_child(sub)
 
-	defeat_screen.add_child(U.lbl(
-		"Your territory has been lost",
-		Vector2(U.WIN_W / 2 - 360, 258), 13, Color(0.50, 0.30, 0.30)))
+	_defeat_sub_lbl = U.lbl(U.lt("territory_lost"),
+		Vector2(U.WIN_W / 2 - 360, 258), 13, Color(0.50, 0.30, 0.30))
+	defeat_screen.add_child(_defeat_sub_lbl)
 
 	# Séparateur
 	var div := ColorRect.new()
@@ -395,21 +418,21 @@ func _build_defeat_screen() -> void:
 	defeat_screen.add_child(stats_container)
 
 	# Boutons
-	var rb : Button = U.btn("↺  Try Again",
+	_defeat_try_btn = U.btn(U.lt("try_again"),
 		Vector2(U.WIN_W / 2 - 240, 620), Vector2(200, 50), 18)
-	rb.add_theme_stylebox_override("normal",
+	_defeat_try_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.18, 0.05, 0.05), Color(0.60, 0.15, 0.15), 2, 10))
-	rb.add_theme_color_override("font_color", U.C_WHITE)
-	rb.pressed.connect(func(): _parent.get_tree().reload_current_scene())
-	defeat_screen.add_child(rb)
+	_defeat_try_btn.add_theme_color_override("font_color", U.C_WHITE)
+	_defeat_try_btn.pressed.connect(func(): _parent.get_tree().reload_current_scene())
+	defeat_screen.add_child(_defeat_try_btn)
 
-	var qb : Button = U.btn("✕  Quit",
+	_defeat_quit_btn = U.btn(U.lt("quit_btn"),
 		Vector2(U.WIN_W / 2 + 40, 620), Vector2(200, 50), 18)
-	qb.add_theme_stylebox_override("normal",
+	_defeat_quit_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.12, 0.04, 0.04), Color(0.45, 0.10, 0.10), 2, 10))
-	qb.add_theme_color_override("font_color", U.C_WHITE)
-	qb.pressed.connect(func(): _parent.get_tree().quit())
-	defeat_screen.add_child(qb)
+	_defeat_quit_btn.add_theme_color_override("font_color", U.C_WHITE)
+	_defeat_quit_btn.pressed.connect(func(): _parent.get_tree().quit())
+	defeat_screen.add_child(_defeat_quit_btn)
 
 	defeat_screen.visible = false
 
