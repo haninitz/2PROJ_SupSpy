@@ -160,10 +160,10 @@ func _on_list_updated(_rid: String, _data: Array) -> void:
 	var current := GameConfig.players.size()
 	if GameConfig.is_host:
 		_btn_lancer.disabled = current < total
-		_status.text = "Tout le monde est là !" if not _btn_lancer.disabled \
-			else "En attente… %d/%d" % [current, total]
+		_status.text = _lt("lobby_all_ready") if not _btn_lancer.disabled \
+			else _lt("lobby_waiting") % [current, total]
 	else:
-		_status.text = "En attente du lancement… %d/%d" % [current, total]
+		_status.text = _lt("lobby_waiting_host") % [current, total]
 
 func _on_room_full(_rid: String) -> void:
 	_status.text = "Room pleine !"

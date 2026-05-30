@@ -150,6 +150,42 @@ const STRINGS = {
 		"lobby_team_b":     "✦ Équipe B",
 		"lobby_launch":     "→  LANCER LA MISSION",
 		"lobby_quit":       "← Quitter la mission",
+		# Multi screen
+		"multi_title":      "MISSION EN LIGNE",
+		"your_agent":       "Ton agent : ",
+		"multi_create":     "✦  CRÉER UNE MISSION",
+		"multi_create_desc":"Héberge une partie — les autres agents pourront te rejoindre",
+		"multi_join":       "⟳  REJOINDRE UNE MISSION",
+		"multi_join_desc":  "Parcours les missions disponibles et rejoins une partie",
+		# Format screen
+		"format_title":     "✦  FORMAT DE MISSION  ✦",
+		"format_1v1":       "✦  1 VS 1  —  Duel d'agentes",
+		"format_1v1_desc":  "Face à face — la mission la plus intense",
+		"format_2v2":       "✦  2 VS 2  —  Équipes de choc",
+		"format_2v2_desc":  "Coordonne-toi avec ton équipière",
+		"format_3v3":       "✦  3 VS 3  —  Guerre totale",
+		"format_3v3_desc":  "Le plus grand affrontement W.O.O.H.P",
+		# Choix map online
+		"choixmap_title":   "✦  CHOISIR LA MAP  ✦",
+		"omap1_desc":       "Île luxueuse avec boutiques",
+		"omap2_desc":       "Bases tech dans la jungle",
+		"omap3_desc":       "Archipel avec ports navals",
+		# Nom room
+		"nomroom_title":    "✦  NOM DE LA MISSION  ✦",
+		"nomroom_label":    "Nom de la room",
+		"nomroom_launch":   "→  LANCER LA MISSION",
+		# Liste rooms
+		"listrooms_title":   "✦  REJOINDRE UNE MISSION  ✦",
+		"listrooms_refresh": "⟳  Actualiser",
+		"listrooms_loading": "Chargement des missions…",
+		"listrooms_empty":   "Aucune mission disponible",
+		"listrooms_count":   "%d mission(s) disponible(s)",
+		"listrooms_players": "joueurs",
+		"listrooms_full":    "PLEINE",
+		# Salle d'attente — statuts
+		"lobby_all_ready":   "Tout le monde est là !",
+		"lobby_waiting":     "En attente… %d/%d",
+		"lobby_waiting_host":"En attente du lancement… %d/%d",
 	},
 	"en": {
 		"subtitle":       "Strategy & Conquest  •  Totally Spies",
@@ -293,6 +329,42 @@ const STRINGS = {
 		"lobby_team_b":     "✦ Team B",
 		"lobby_launch":     "→  LAUNCH MISSION",
 		"lobby_quit":       "← Leave mission",
+		# Multi screen
+		"multi_title":      "ONLINE MISSION",
+		"your_agent":       "Your agent: ",
+		"multi_create":     "✦  CREATE A MISSION",
+		"multi_create_desc":"Host a game — other agents can join you",
+		"multi_join":       "⟳  JOIN A MISSION",
+		"multi_join_desc":  "Browse available missions and join a game",
+		# Format screen
+		"format_title":     "✦  MISSION FORMAT  ✦",
+		"format_1v1":       "✦  1 VS 1  —  Agent Duel",
+		"format_1v1_desc":  "Face to face — the most intense mission",
+		"format_2v2":       "✦  2 VS 2  —  Strike Teams",
+		"format_2v2_desc":  "Coordinate with your teammate",
+		"format_3v3":       "✦  3 VS 3  —  Total War",
+		"format_3v3_desc":  "The greatest W.O.O.H.P confrontation",
+		# Online map selection
+		"choixmap_title":   "✦  CHOOSE MAP  ✦",
+		"omap1_desc":       "Luxury island with shops",
+		"omap2_desc":       "Tech bases in the jungle",
+		"omap3_desc":       "Archipelago with naval ports",
+		# Room name
+		"nomroom_title":    "✦  MISSION NAME  ✦",
+		"nomroom_label":    "Room name",
+		"nomroom_launch":   "→  LAUNCH MISSION",
+		# Room list
+		"listrooms_title":   "✦  JOIN A MISSION  ✦",
+		"listrooms_refresh": "⟳  Refresh",
+		"listrooms_loading": "Loading missions…",
+		"listrooms_empty":   "No missions available",
+		"listrooms_count":   "%d mission(s) available",
+		"listrooms_players": "players",
+		"listrooms_full":    "FULL",
+		# Lobby status
+		"lobby_all_ready":   "Everyone is here!",
+		"lobby_waiting":     "Waiting… %d/%d",
+		"lobby_waiting_host":"Waiting for launch… %d/%d",
 	},
 	"es": {
 		"subtitle":       "Estrategia & Conquista  •  Totally Spies",
@@ -436,6 +508,42 @@ const STRINGS = {
 		"lobby_team_b":     "✦ Equipo B",
 		"lobby_launch":     "→  LANZAR MISIÓN",
 		"lobby_quit":       "← Abandonar misión",
+		# Multi screen
+		"multi_title":      "MISIÓN EN LÍNEA",
+		"your_agent":       "Tu agente: ",
+		"multi_create":     "✦  CREAR UNA MISIÓN",
+		"multi_create_desc":"Aloja una partida — otros agentes podrán unirse",
+		"multi_join":       "⟳  UNIRSE A UNA MISIÓN",
+		"multi_join_desc":  "Explora las misiones disponibles y únete",
+		# Format screen
+		"format_title":     "✦  FORMATO DE MISIÓN  ✦",
+		"format_1v1":       "✦  1 VS 1  —  Duelo de agentes",
+		"format_1v1_desc":  "Cara a cara — la misión más intensa",
+		"format_2v2":       "✦  2 VS 2  —  Equipos de choque",
+		"format_2v2_desc":  "Coordínate con tu compañera",
+		"format_3v3":       "✦  3 VS 3  —  Guerra total",
+		"format_3v3_desc":  "El mayor enfrentamiento W.O.O.H.P",
+		# Selección mapa online
+		"choixmap_title":   "✦  ELEGIR MAPA  ✦",
+		"omap1_desc":       "Isla de lujo con tiendas",
+		"omap2_desc":       "Bases tech en la jungla",
+		"omap3_desc":       "Archipiélago con puertos navales",
+		# Nombre de room
+		"nomroom_title":    "✦  NOMBRE DE MISIÓN  ✦",
+		"nomroom_label":    "Nombre de la sala",
+		"nomroom_launch":   "→  LANZAR MISIÓN",
+		# Lista de salas
+		"listrooms_title":   "✦  UNIRSE A UNA MISIÓN  ✦",
+		"listrooms_refresh": "⟳  Actualizar",
+		"listrooms_loading": "Cargando misiones…",
+		"listrooms_empty":   "Sin misiones disponibles",
+		"listrooms_count":   "%d misión/misiones disponible(s)",
+		"listrooms_players": "jugadores",
+		"listrooms_full":    "LLENA",
+		# Estado sala de espera
+		"lobby_all_ready":   "¡Todo el mundo está aquí!",
+		"lobby_waiting":     "Esperando… %d/%d",
+		"lobby_waiting_host":"Esperando lanzamiento… %d/%d",
 	}
 }
 

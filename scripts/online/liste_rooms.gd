@@ -1,6 +1,10 @@
 extends Control
 # liste_rooms.gd — SupKonQuest · Totally Spies
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)
 const C_PURPLE := Color(0.55, 0.15, 0.85)
@@ -40,7 +44,7 @@ func _process(delta: float) -> void:
 
 func _refresh() -> void:
 	_refresh_timer = 0.0
-	_status.text   = "Chargement des missions…"
+	_status.text   = _lt("listrooms_loading")
 	for c in _room_list.get_children(): c.queue_free()
 	Matchmaker.get_room_list()
 
@@ -56,7 +60,7 @@ func _build() -> void:
 	add_child(panel)
 
 	var title := Label.new()
-	title.text = "✦  REJOINDRE UNE MISSION  ✦"
+	title.text = _lt("listrooms_title")
 	title.position = Vector2(0, 22); title.size = Vector2(640, 45)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 22)
@@ -76,7 +80,7 @@ func _build() -> void:
 	panel.add_child(hb)
 
 	var btn_refresh := Button.new()
-	btn_refresh.text = "⟳  Actualiser"
+	btn_refresh.text = _lt("listrooms_refresh")
 	btn_refresh.custom_minimum_size = Vector2(190, 44)
 	btn_refresh.add_theme_stylebox_override("normal", _flat(Color(0,0.18,0.18), C_CYAN, 2, 8))
 	btn_refresh.add_theme_color_override("font_color", C_WHITE)
@@ -88,7 +92,7 @@ func _build() -> void:
 	hb.add_child(spacer)
 
 	var btn_back := Button.new()
-	btn_back.text = "← Retour"
+	btn_back.text = _lt("back")
 	btn_back.custom_minimum_size = Vector2(190, 44)
 	btn_back.add_theme_stylebox_override("normal", _flat(Color(0.12,0.08,0.18), C_PURPLE, 2, 8))
 	btn_back.add_theme_color_override("font_color", C_WHITE)
@@ -114,7 +118,7 @@ func _populate_list(rooms: Array) -> void:
 	var visibles := rooms.filter(func(r): return not r.get("started", false))
 
 	if visibles.is_empty():
-		_status.text = "Aucune mission disponible"
+		_status.text = _lt("listrooms_empty")
 		return
 
 	var nb_dispo := 0
@@ -134,9 +138,10 @@ func _populate_list(rooms: Array) -> void:
 		var col : Color = Color(0.45, 0.30, 0.40) if is_full else C_PINK
 
 		var btn := Button.new()
-		btn.text = "✦  %s  |  %s  |  %s  |  %d/%d joueurs%s" % [
+		btn.text = "✦  %s  |  %s  |  %s  |  %d/%d %s%s" % [
 			rname, map_n.to_upper(), fmt, plrs, maxp,
-			"    PLEINE" if is_full else ""]
+			_lt("listrooms_players"),
+			"    " + _lt("listrooms_full") if is_full else ""]
 		btn.custom_minimum_size = Vector2(0, 52)
 		btn.add_theme_font_size_override("font_size", 13)
 		btn.add_theme_stylebox_override("normal", _flat(Color(0.08,0.02,0.16), col, 2, 8))
@@ -149,7 +154,7 @@ func _populate_list(rooms: Array) -> void:
 			btn.pressed.connect(func(): _join_room(rname, map_n, fmt, mode, diff, ip))
 		_room_list.add_child(btn)
 
-	_status.text = "%d mission(s) disponible(s)" % nb_dispo
+	_status.text = _lt("listrooms_count") % nb_dispo
 
 func _join_room(room_name: String, map: String, format: String,
 		mode: String, diff: String, ip: String) -> void:

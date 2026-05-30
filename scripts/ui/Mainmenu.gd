@@ -414,14 +414,14 @@ func _on_ai_next() -> void:
 func _build_multi_screen() -> void:
 	_multi_screen = U.make_screen(false)
 	_parent.add_child(_multi_screen)
-	U.add_header(_multi_screen, "MISSION EN LIGNE", U.C_CYAN)
+	U.add_header(_multi_screen, U.lt("multi_title"), U.C_CYAN)
 
 	var teams : Array = _get_teams()
 
 	# Indicateur team sélectionnée
 	var sel_label := Label.new()
 	sel_label.name = "MPSelLabel"
-	sel_label.text = "Ton agent : " + teams[0]["name"]
+	sel_label.text = U.lt("your_agent") + teams[0]["name"]
 	sel_label.position = Vector2(55, 124)
 	sel_label.size = Vector2(U.WIN_W - 110, 22)
 	sel_label.add_theme_font_size_override("font_size", 13)
@@ -448,7 +448,7 @@ func _build_multi_screen() -> void:
 	_multi_screen.add_child(status_lbl)
 
 	# Bouton Créer
-	var create_btn : Button = U.btn("✦  CRÉER UNE MISSION",
+	var create_btn : Button = U.btn(U.lt("multi_create"),
 		Vector2(55, 366), Vector2(490, 60), 18)
 	create_btn.add_theme_stylebox_override("normal", U.flat(Color(0.20,0.04,0.12), U.C_PINK, 2, 10))
 	create_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.35,0.08,0.20), U.C_PINK, 2, 10))
@@ -457,14 +457,14 @@ func _build_multi_screen() -> void:
 	_multi_screen.add_child(create_btn)
 
 	var desc_c := Label.new()
-	desc_c.text = "Héberge une partie — les autres agents pourront te rejoindre"
+	desc_c.text = U.lt("multi_create_desc")
 	desc_c.position = Vector2(55, 432)
 	desc_c.add_theme_font_size_override("font_size", 11)
 	desc_c.add_theme_color_override("font_color", Color(0.70, 0.50, 0.75))
 	_multi_screen.add_child(desc_c)
 
 	# Bouton Rejoindre
-	var join_btn : Button = U.btn("⟳  REJOINDRE UNE MISSION",
+	var join_btn : Button = U.btn(U.lt("multi_join"),
 		Vector2(55, 458), Vector2(490, 60), 18)
 	join_btn.add_theme_stylebox_override("normal", U.flat(Color(0.04,0.12,0.20), U.C_CYAN, 2, 10))
 	join_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.08,0.20,0.35), U.C_CYAN, 2, 10))
@@ -473,7 +473,7 @@ func _build_multi_screen() -> void:
 	_multi_screen.add_child(join_btn)
 
 	var desc_j := Label.new()
-	desc_j.text = "Parcours les missions disponibles et rejoins une partie"
+	desc_j.text = U.lt("multi_join_desc")
 	desc_j.position = Vector2(55, 524)
 	desc_j.add_theme_font_size_override("font_size", 11)
 	desc_j.add_theme_color_override("font_color", Color(0.50, 0.70, 0.80))
@@ -537,7 +537,7 @@ func _build_team_grid(parent: Panel, teams: Array, origin: Vector2,
 			if ctx == "ai":
 				sel_label.text = U.lt("your_team") + tn
 			else:
-				sel_label.text = "Ton agent : " + tn)
+				sel_label.text = U.lt("your_agent") + tn)
 		parent.add_child(tb)
 
 
