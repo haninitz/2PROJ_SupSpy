@@ -4,9 +4,9 @@
 [ext_resource type="Script" uid="uid://c8x4jvrya46lo" path="res://scripts/ui/UI.gd" id="2_ui"]
 [ext_resource type="PackedScene" uid="uid://bg1bl6567xbof" path="res://scenes/maps/map_beverly.tscn" id="3_nxtc6"]
 [ext_resource type="Script" uid="uid://b0e3sx2bu5b37" path="res://scripts/map_beverly_painter.gd" id="4_jlsqs"]
-[ext_resource type="PackedScene" uid="uid://xtk84jynf7pf" path="res://scenes/maps/map_jungle.tscn" id="5_q8u5g"]
+[ext_resource type="PackedScene" uid="uid://xtk84jynf7pf" path="res://scenes/maps/map_Tropical.tscn" id="5_q8u5g"]
 [ext_resource type="Script" uid="uid://ds657dl5kxjys" path="res://scripts/map_jungle_painter.gd" id="6_lhr70"]
-[ext_resource type="PackedScene" uid="uid://fywq11qpckek" path="res://scenes/maps/MapTropical.tscn" id="7_wp0k4"]
+[ext_resource type="PackedScene" uid="uid://fywq11qpckek" path="res://scenes/maps/MapJungle.tscn" id="7_wp0k4"]
 [ext_resource type="Script" uid="uid://dil44mhgjo78i" path="res://scripts/ui/Cameracontroller.gd" id="9_q8u5g"]
 
 [node name="Main" type="Node2D" unique_id=1610255818]

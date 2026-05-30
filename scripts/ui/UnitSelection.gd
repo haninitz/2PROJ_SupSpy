@@ -39,9 +39,8 @@ func _ready() -> void:
 # ─────────────────────────────────────────
 #  INPUT
 # ─────────────────────────────────────────
-func _input(event: InputEvent) -> void:
-	_handle_mouse_input(event)
-	_handle_keyboard_input(event)
+func _input(_event: InputEvent) -> void:
+	return
 
 func _handle_mouse_input(event: InputEvent) -> void:
 	# Clic gauche — début de sélection ou sélection simple

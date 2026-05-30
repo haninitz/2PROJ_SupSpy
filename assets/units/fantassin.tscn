@@ -167,7 +167,7 @@ shape = SubResource("CapsuleShape2D_5xatw")
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=1569775483]
 
-[node name="AttckeTimer" type="Timer" parent="." unique_id=2034343436]
+[node name="AttackTimer" type="Timer" parent="." unique_id=2034343436]
 
 [node name="RangeArea" type="Area2D" parent="." unique_id=879132680]
 

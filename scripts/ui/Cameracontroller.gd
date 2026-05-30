@@ -1,7 +1,7 @@
 extends Camera2D
 
 const ZOOM_MAX   : float = 3.0
-const ZOOM_MIN   : float = 0.2
+const ZOOM_MIN   : float = 0.4
 const ZOOM_STEP  : float = 0.1
 const PAN_SPEED  : float = 500.0
 const PAN_BUTTON : int   = MOUSE_BUTTON_MIDDLE
@@ -20,7 +20,7 @@ var _cam_origin : Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
-	zoom     = Vector2(0.3, 0.3)
+	zoom     = Vector2(0.8, 0.8)
 	position = Vector2(576, 310)
 
 

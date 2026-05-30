@@ -549,6 +549,7 @@ sources/4 = SubResource("TileSetAtlasSource_frrw0")
 sources/0 = SubResource("TileSetAtlasSource_65mu1")
 
 [node name="MapTropical" type="Node2D" unique_id=1911332506]
+position = Vector2(530, 360)
 script = ExtResource("1_pgdwf")
 
 [node name="TileMap" type="TileMap" parent="." unique_id=1619110005]

@@ -61,7 +61,8 @@ func draw(canvas: Node2D, font: Font, camps: Array, selected_idx: int,
 
 func _draw_camp(canvas: Node2D, font: Font, camp, is_selected: bool, t: float) -> void:
 	# Supporte owner_id (Camp_hani Node2D) et owner (Camp RefCounted)
-	var col : Color = _owner_color(camp.get("owner_id") if "owner_id" in camp else camp.get("owner", -1))
+	var owner: int = camp.get("owner_id") if "owner_id" in camp else camp.get("owner", -1)
+	var col: Color = camp.get("color", _owner_color(owner))
 
 	# Ombre
 	canvas.draw_circle(camp.pos + Vector2(5, 5), CAMP_R, Color(0, 0, 0, 0.22))
@@ -120,6 +121,10 @@ func _draw_camp(canvas: Node2D, font: Font, camp, is_selected: bool, t: float) -
 
 func _owner_color(owner: int) -> Color:
 	match owner:
-		0: return C_P1
-		1: return C_P2
+		0:
+			return C_NEUTRAL
+		1:
+			return C_P1
+		2:
+			return C_P2
 	return C_NEUTRAL

@@ -33,6 +33,15 @@ const UNIT_SCENES := {
 	"shadow_vessel"  : "res://assets/units/destroyer.tscn",
 }
 
+const CAMP_CLICK_RADIUS : float = 145.0
+const UNIT_CLICK_RADIUS : float = 30.0
+const CAMP_CAPTURE_RADIUS : float = 90.0
+const UNIT_FORMATION_SPACING : float = 34.0
+
+const BASIC_LAND_UNITS := ["infantry", "range", "support", "healer"]
+const ADVANCED_LAND_UNITS := ["heavy", "anti_armor", "mortar"]
+const SEA_UNITS := ["spy_yacht", "woohp_cruiser", "shadow_vessel"]
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ÉTAT
 # ─────────────────────────────────────────────────────────────────────────────
@@ -50,7 +59,10 @@ var _map_index      : int   = 0
 var _game_over      : bool  = false
 var _income_timer   : float = 0.0
 var _overlay        : CampOverlay = null
-var _selected_unit: Unit = null
+var _selected_units : Array = []
+var _drag_start     : Vector2 = Vector2.ZERO
+var _drag_end       : Vector2 = Vector2.ZERO
+var _is_dragging    : bool = false
 
 
 # ── Statistiques de fin de partie ────────────────────────────────────────────
@@ -82,10 +94,15 @@ func _connect_ui() -> void:
 	if not is_instance_valid(_ui):
 		push_error("[Main] nœud UI introuvable")
 		return
+
 	_ui.map_selected.connect(_on_map_selected)
 	_ui.recruit_pressed.connect(_on_recruit_pressed)
+
 	if _ui.has_signal("end_turn_pressed"):
 		_ui.end_turn_pressed.connect(_on_end_turn)
+
+	if _ui.has_signal("squads_selected"):
+		_ui.squads_selected.connect(_on_squads_selected)
 
 
 func _on_map_selected(index: int) -> void:
@@ -99,20 +116,18 @@ func _start_game() -> void:
 	print("[Main] Démarrage de la partie — mode : %s  map : %s" %
 		[GameConfig.mode, MapDefs.MAPS[_map_index].get("name", "?")])
 
-	# En multi : hote = joueur 1 (red), client = joueur 2 (blue)
 	if GameConfig.mode == "multi":
 		local_player_id = 1 if GameConfig.is_host else 2
 		print("[Main] local_player_id = %d  is_host = %s" % [local_player_id, GameConfig.is_host])
 	else:
 		local_player_id = 1
 
-	# L'IA ne tourne que en mode ai, et seulement chez l'hôte
 	_ai_enabled = (GameConfig.mode == "ai")
-	print("[Main] IA activée : ", _ai_enabled)
 	_ai_player_id = 2
 	_ai_timer = 0.0
 
 	_selected = null
+	_clear_unit_selection()
 	_income_timer = 0.0
 	_game_start_time = Time.get_ticks_msec() / 1000.0
 	_gold         = [0, 150, 150]
@@ -120,47 +135,64 @@ func _start_game() -> void:
 	_income_peak  = [0, 0]
 	_units_lost   = [0, 0]
 
-	# Supprime les anciens camps (rejouer)
+	for unit in get_tree().get_nodes_in_group("units"):
+		if is_instance_valid(unit):
+			unit.queue_free()
+
 	for c in _camps:
 		if is_instance_valid(c):
 			c.queue_free()
 	_camps.clear()
 
-	# Crée les camps depuis MapDefs
 	var map_data : Dictionary = MapDefs.MAPS[_map_index]
 	var CampScene := load("res://scenes/camp_base.tscn") as PackedScene
 
 	for i in range(map_data["camps"].size()):
 		var d : Dictionary = map_data["camps"][i]
 		var camp : Node2D = CampScene.instantiate()
-		camp.position     = d["pos"]
-		camp.camp_name    = d["name"]
-		camp.camp_id      = i
+		camp.position = d["pos"]
+		camp.scale = Vector2(1.45, 1.45)
+		camp.z_index = 50
+		camp.camp_name = d["name"]
+		camp.camp_id = i
 		camp.income_value = d["income"]
-		camp.is_port      = d.get("is_port", false)
-		camp.units        = d["units"]
-		camp.unit_type    = "infantry"
+		camp.is_port = d.get("is_port", false)
+		camp.is_neutral_hard = d.get("is_neutral_hard", false)
+		camp.unit_type = "infantry"
 		camp.production_queue = []
-		camp.owner_id = int(d.get("owner", 0))
-		print("Camp ", camp.camp_name, " initialisé avec owner_id ", camp.owner_id)
-		if camp.has_method("change_owner"):
-			camp.change_owner(camp.owner_id)
+		camp.units = 0
+		camp.set_meta("initial_units", max(1, int(d.get("units", 1))))
+		if camp.has_signal("camp_empty") and not camp.camp_empty.is_connected(_on_camp_empty):
+			camp.camp_empty.connect(_on_camp_empty)
 		add_child(camp)
 		_camps.append(camp)
-		var visual_count: int = mini(camp.units, 3)
-		for j in range(visual_count):
-			_spawn_unit(camp.unit_type, camp)
+		camp.owner_id = int(d.get("owner", 0))
+
+		var camp_color: Color = _get_owner_color(camp.owner_id)
+
+		if camp.has_method("set_team_color"):
+			camp.set_team_color(camp_color)
+
+		if camp.has_method("change_owner"):
+			camp.change_owner(camp.owner_id, camp_color)
+
 	GameManager.start_game_with_camps(_camps)
 
-	# Assignation aléatoire — uniquement chez l hote (ou en mode solo/IA)
 	if GameConfig.mode != "multi" or GameConfig.is_host:
 		_randomize_camp_owners()
-		# En multi : broadcaster l état randomisé immédiatement au client
+		if GameManager.has_method("_assign_camps_to_players"):
+			GameManager._assign_camps_to_players()
 		if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
 			_broadcast_state()
 
+	for camp in _camps:
+		var initial_units : int = int(camp.get_meta("initial_units", 1))
+		if camp.is_neutral_hard:
+			initial_units = max(initial_units, 5)
+		for j in range(initial_units):
+			_spawn_unit(camp.unit_type, camp, true)
+
 	_refresh_ui()
-	# Crée/recycle l'overlay de dessin (z_index haut = au-dessus des TileMaps)
 	if _overlay == null:
 		_overlay = CampOverlay.new()
 		_overlay.z_index = 100
@@ -168,6 +200,20 @@ func _start_game() -> void:
 	_overlay.main = self
 	_overlay.queue_redraw()
 
+func _on_squads_selected(squad1: String, squad2: String) -> void:
+	GameConfig.selected_team_ids = [
+		_get_team_index_by_name(squad1),
+		_get_team_index_by_name(squad2)
+	]
+	print("[Main] Teams sélectionnées : ", GameConfig.selected_team_ids)
+
+
+func _get_team_index_by_name(team_name: String) -> int:
+	for i in range(GameManager.available_teams.size()):
+		var team: Dictionary = GameManager.available_teams[i]
+		if team.get("name", "") == team_name:
+			return i
+	return 0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BOUCLE
@@ -183,12 +229,9 @@ func _process(delta: float) -> void:
 	if _camps.is_empty():
 		return
 
-	# En multi : le client ne calcule pas income/production (hote est l autorité)
-	# Mais il continue pour le redraw overlay et l input
 	var _is_client : bool = GameConfig.mode == "multi" and not GameConfig.is_host
 
 	if not _is_client:
-		# Revenus
 		_income_timer += delta
 		if _income_timer >= INCOME_INTERVAL:
 			_income_timer = 0.0
@@ -204,14 +247,12 @@ func _process(delta: float) -> void:
 				if cnt > _camps_peak[idx]:  _camps_peak[idx]  = cnt
 				if inc > _income_peak[idx]: _income_peak[idx] = inc
 
-		# Sync host → clients
 		if GameConfig.mode == "multi":
 			_sync_timer += delta
 			if _sync_timer >= SYNC_INTERVAL:
 				_sync_timer = 0.0
 				_broadcast_state()
 
-		# Production
 		for camp in _camps:
 			if camp.production_queue.is_empty():
 				continue
@@ -219,12 +260,13 @@ func _process(delta: float) -> void:
 			entry["remaining"] -= delta
 			if entry["remaining"] <= 0.0:
 				camp.production_queue.pop_front()
-				camp.units += 1
-				_spawn_unit(entry["unit_type"], camp)
+				_spawn_unit(entry["unit_type"], camp, true)
 				_log("Unité produite à %s" % camp.camp_name)
 				if not camp.production_queue.is_empty():
 					camp.production_queue[0]["remaining"] = _build_time(camp.production_queue[0]["unit_type"])
 				_refresh_ui()
+
+	_process_unit_camp_orders()
 
 	if _ai_enabled:
 		_ai_timer += delta
@@ -232,76 +274,236 @@ func _process(delta: float) -> void:
 			_ai_timer = 0.0
 			_run_ai_tick()
 
-	if _overlay: 
+	if _overlay:
 		_overlay.queue_redraw()
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INPUT
 # ─────────────────────────────────────────────────────────────────────────────
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if _game_over or _camps.is_empty():
 		return
 
-	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+	if event is InputEventMouseButton and _is_mouse_over_clickable_ui():
 		return
 
-	var click : Vector2 = get_global_mouse_position()
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		var world_pos : Vector2 = get_global_mouse_position()
 
-	var clicked_unit := _get_unit_at(click)
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_drag_start = world_pos
+				_drag_end = world_pos
+				_is_dragging = false
+			else:
+				_drag_end = world_pos
+				if _is_dragging or _drag_start.distance_to(_drag_end) > 12.0:
+					_select_units_in_rect(_drag_start, _drag_end)
+				else:
+					_handle_left_click(world_pos, mb.shift_pressed)
+				_is_dragging = false
+				queue_redraw()
+			return
 
-	if clicked_unit != null:
-		if clicked_unit.can_be_controlled_by(local_player_id):
-			_selected_unit = clicked_unit
-			_log("Unité sélectionnée")
-		else:
-			_log("Cette unité ne vous appartient pas !")
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			_handle_right_click(world_pos)
+			return
+
+	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_drag_end = get_global_mouse_position()
+		if _drag_start.distance_to(_drag_end) > 12.0:
+			_is_dragging = true
+			queue_redraw()
+
+func _is_mouse_over_clickable_ui() -> bool:
+	var hovered: Control = get_viewport().gui_get_hovered_control()
+
+	if hovered == null:
+		return false
+
+	if hovered is BaseButton:
+		return true
+
+	if hovered is Slider:
+		return true
+
+	if hovered is LineEdit:
+		return true
+
+	var node: Node = hovered
+	while node != null:
+		if node.name.to_lower().contains("recruit"):
+			return true
+		if node.name.to_lower().contains("button"):
+			return true
+		node = node.get_parent()
+
+	return false
+
+func _handle_left_click(pos: Vector2, shift_held: bool = false) -> void:
+	var clicked_owned_camp: Node = _get_owned_camp_at(pos)
+
+	if clicked_owned_camp != null:
+		_select(clicked_owned_camp)
+		if not shift_held:
+			_clear_unit_selection()
 		return
 
-	if _selected_unit != null:
-		if _selected_unit.can_be_controlled_by(local_player_id):
-			_selected_unit.move_to(click)
-		return
+	var clicked_unit := _get_unit_at(pos)
 
-	var clicked : Node = _get_camp_at(click)
-
-	if clicked == null:
+	if clicked_unit != null and clicked_unit.can_be_controlled_by(local_player_id):
+		if not shift_held:
+			_clear_unit_selection()
+		_toggle_unit_selection(clicked_unit)
 		_deselect()
 		return
 
-	if _selected == null:
-		if clicked.owner_id == local_player_id:
-			_select(clicked)
+	var clicked_camp: Node = _get_camp_at(pos)
+
+	if clicked_camp != null:
+		if clicked_camp.owner_id == 0:
+			_log("Camp neutre : envoyez des unités pour le capturer.")
 		else:
-			_log("Ce camp ne vous appartient pas !")
+			_log("Camp adverse : envoyez des unités pour l'attaquer.")
 		return
 
-	if clicked == _selected:
+	if not shift_held:
+		_clear_unit_selection()
 		_deselect()
+
+func _handle_right_click(pos: Vector2) -> void:
+	if _selected_units.is_empty():
 		return
-
-	if clicked.owner_id == local_player_id:
-		_select(clicked)
-		return
-
-	if _selected.units < 1:
-		_log("Pas d unités dans ce camp !")
-		return
-
-	_do_attack(_selected, clicked)
-
+	var target_camp : Node = _get_camp_at(pos)
+	if target_camp != null:
+		_order_units_to_camp(_selected_units, target_camp)
+	else:
+		_order_units_to_position(_selected_units, pos)
 
 func _get_camp_at(pos: Vector2) -> Node:
+	var nearest : Node = null
+	var nearest_dist : float = INF
+
 	for camp in _camps:
-		if camp.global_position.distance_to(pos) <= 48.0:
-			return camp
-	return null
+		if not is_instance_valid(camp):
+			continue
+
+		var dist: float = camp.global_position.distance_to(pos)
+
+		if dist <= CAMP_CLICK_RADIUS and dist < nearest_dist:
+			nearest = camp
+			nearest_dist = dist
+
+	return nearest
+
+func _get_owned_camp_at(pos: Vector2) -> Node:
+	var nearest: Node = null
+	var nearest_dist: float = INF
+
+	for camp in _camps:
+		if not is_instance_valid(camp):
+			continue
+
+		if camp.owner_id != local_player_id:
+			continue
+
+		var dist: float = camp.global_position.distance_to(pos)
+
+		if dist <= CAMP_CLICK_RADIUS and dist < nearest_dist:
+			nearest = camp
+			nearest_dist = dist
+
+	return nearest
 
 func _get_unit_at(pos: Vector2) -> Unit:
+	var nearest : Unit = null
+	var nearest_dist : float = INF
 	for unit in get_tree().get_nodes_in_group("units"):
-		if unit is Unit and unit.global_position.distance_to(pos) <= 32.0:
-			return unit
-	return null
+		if unit is Unit and unit.is_alive:
+			var dist : float = unit.global_position.distance_to(pos)
+			if dist <= UNIT_CLICK_RADIUS and dist < nearest_dist:
+				nearest = unit
+				nearest_dist = dist
+	return nearest
+
+func _select_units_in_rect(a: Vector2, b: Vector2) -> void:
+	var rect := Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), Vector2(absf(a.x - b.x), absf(a.y - b.y)))
+	_clear_unit_selection()
+	for unit in get_tree().get_nodes_in_group("units"):
+		if unit is Unit and unit.can_be_controlled_by(local_player_id) and rect.has_point(unit.global_position):
+			_add_unit_selection(unit)
+	_log("%d unité(s) sélectionnée(s)" % _selected_units.size())
+
+func _toggle_unit_selection(unit: Unit) -> void:
+	if _selected_units.has(unit):
+		_remove_unit_selection(unit)
+	else:
+		_add_unit_selection(unit)
+
+func _add_unit_selection(unit: Unit) -> void:
+	if _selected_units.has(unit):
+		return
+	_selected_units.append(unit)
+	if unit.has_method("select"):
+		unit.select()
+	if _ui and _ui.has_method("update_selection_panel"):
+		_ui.update_selection_panel(_selected_units)
+
+func _remove_unit_selection(unit: Unit) -> void:
+	if not _selected_units.has(unit):
+		return
+	_selected_units.erase(unit)
+	if is_instance_valid(unit) and unit.has_method("deselect"):
+		unit.deselect()
+	if _ui and _ui.has_method("update_selection_panel"):
+		_ui.update_selection_panel(_selected_units)
+
+func _clear_unit_selection() -> void:
+	for unit in _selected_units:
+		if is_instance_valid(unit) and unit.has_method("deselect"):
+			unit.deselect()
+	_selected_units.clear()
+	if _ui and _ui.has_method("update_selection_panel"):
+		_ui.update_selection_panel(_selected_units)
+
+func _order_units_to_position(units_list: Array, target_pos: Vector2) -> void:
+	for i in range(units_list.size()):
+		var unit = units_list[i]
+		if not is_instance_valid(unit) or not unit.can_be_controlled_by(local_player_id):
+			continue
+		_detach_unit_from_home(unit)
+		unit.clear_target_camp()
+		unit.move_to(target_pos + _formation_offset(i, units_list.size()))
+
+func _order_units_to_camp(units_list: Array, target_camp: Node) -> void:
+	for i in range(units_list.size()):
+		var unit = units_list[i]
+		if not is_instance_valid(unit) or not unit.can_be_controlled_by(local_player_id):
+			continue
+		_detach_unit_from_home(unit)
+		unit.move_to_camp(target_camp, _formation_offset(i, units_list.size()))
+	if target_camp.owner_id == local_player_id:
+		_log("Déplacement vers %s" % target_camp.camp_name)
+	else:
+		_log("Attaque de %s" % target_camp.camp_name)
+
+func _formation_offset(index: int, total: int) -> Vector2:
+	var per_row: int = 4
+	var row: int = index / per_row
+	var col: int = index % per_row
+	var row_count: int = mini(total - row * per_row, per_row)
+
+	var x: float = (float(col) - float(row_count - 1) / 2.0) * 26.0
+	var y: float = (float(row) - float(ceili(float(total) / float(per_row)) - 1) / 2.0) * 26.0
+
+	return Vector2(x, y)
+
+func _detach_unit_from_home(unit: Unit) -> void:
+	if unit.home_camp != null and is_instance_valid(unit.home_camp):
+		if unit.home_camp.has_method("unregister_unit"):
+			unit.home_camp.unregister_unit(unit, true)
+	unit.home_camp = null
 
 func _select(camp: Node) -> void:
 	_selected = camp
@@ -310,12 +512,41 @@ func _select(camp: Node) -> void:
 	_refresh_ui()
 	if _overlay: _overlay.queue_redraw()
 
-
 func _deselect() -> void:
 	_selected = null
 	_ui.hide_recruit()
 	_refresh_ui()
 	if _overlay: _overlay.queue_redraw()
+
+func _draw() -> void:
+	if _is_dragging:
+		var rect := Rect2(Vector2(minf(_drag_start.x, _drag_end.x), minf(_drag_start.y, _drag_end.y)), Vector2(absf(_drag_start.x - _drag_end.x), absf(_drag_start.y - _drag_end.y)))
+		draw_rect(rect, Color(0.2, 0.8, 1.0, 0.15), true)
+		draw_rect(rect, Color(0.2, 0.8, 1.0, 0.75), false, 2.0)
+
+func _get_owner_color(owner_id: int) -> Color:
+	if owner_id == 0:
+		return Color(0.55, 0.55, 0.55)
+
+	var color: Color = Color.WHITE
+
+	if GameManager and GameManager.has_method("get_team_color"):
+		color = GameManager.get_team_color(owner_id)
+	else:
+		var player = GameManager.find_player_by_id(owner_id)
+		if player and "color" in player:
+			color = player.color
+
+	if color == Color.WHITE:
+		if owner_id == 1:
+			color = Color(0.22, 0.45, 0.90)
+		elif owner_id == 2:
+			color = Color(0.88, 0.22, 0.22)
+
+	if color.r < 0.12 and color.g < 0.12 and color.b < 0.12:
+		color = Color(0.45, 0.45, 0.70)
+
+	return color
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -387,14 +618,18 @@ func _rpc_sync_attack_result(
 func _camp_to_dict(camp: Node) -> Dictionary:
 	return {
 		"name"     : camp.camp_name,
+		"camp_name": camp.camp_name,
 		"pos"      : camp.global_position,
 		"owner"    : camp.owner_id,
+		"owner_id" : camp.owner_id,
 		"units"    : camp.units,
 		"income"   : camp.income_value,
 		"unit_type": camp.unit_type,
 		"type"     : "port" if camp.is_port else "normal",
-		"queue"    : []
+		"queue"    : camp.production_queue,
+		"color"    : _get_owner_color(camp.owner_id)
 	}
+
 
 #ia
 func _run_ai_tick() -> void:
@@ -425,64 +660,48 @@ func _run_ai_tick() -> void:
 
 
 func _ai_recruit(ai_player, ai_camps: Array) -> void:
-	var unit_choices: Array = ["infantry", "range", "heavy"]
-
+	var unit_choices: Array = ["infantry", "range"]
 	var available_camps: Array = []
-
 	for camp in ai_camps:
 		if camp.production_queue.size() < MAX_QUEUE:
 			available_camps.append(camp)
-
 	if available_camps.is_empty():
 		return
-
 	var camp = available_camps.pick_random()
-
+	if camp.has_method("get_available_unit_types"):
+		unit_choices = camp.get_available_unit_types()
 	var affordable_units: Array = []
-
 	for unit_type in unit_choices:
 		var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
 		if ai_player.gold >= price:
 			affordable_units.append(unit_type)
-
 	if affordable_units.is_empty():
 		return
-
 	var chosen_unit: String = affordable_units.pick_random()
 	var price: int = UnitDefs.TYPES.get(chosen_unit, {}).get("price", 50)
-
-	ai_player.gold -= price
-
-	camp.production_queue.append({
-		"unit_type": chosen_unit,
-		"remaining": _build_time(chosen_unit)
-	})
-
+	if not ai_player.spend_gold(price):
+		return
+	camp.production_queue.append({"unit_type": chosen_unit, "remaining": _build_time(chosen_unit)})
 	camp.unit_type = chosen_unit
-
 	_log("IA recrute %s à %s" % [chosen_unit, camp.camp_name])
 	_refresh_ui()
 
-
 func _ai_attack(ai_camps: Array, targets: Array) -> void:
 	var possible_attackers: Array = []
-
 	for camp in ai_camps:
-		if camp.units > 1:
+		if camp.has_method("get_available_garrison") and camp.get_available_garrison().size() > 1:
 			possible_attackers.append(camp)
-
 	if possible_attackers.is_empty():
 		return
-
 	var attacker = possible_attackers.pick_random()
 	var target = _ai_find_best_target(attacker, targets)
-
 	if target == null:
 		return
-
-	_log("IA attaque %s depuis %s" % [target.camp_name, attacker.camp_name])
-	_do_attack(attacker, target, false)
-
+	var units_to_send: Array = attacker.get_available_garrison().slice(0, mini(2, attacker.get_available_garrison().size() - 1))
+	for unit in units_to_send:
+		_detach_unit_from_home(unit)
+		unit.move_to_camp(target, Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+	_log("IA envoie %d unité(s) vers %s" % [units_to_send.size(), target.camp_name])
 
 func _ai_find_best_target(attacker: Node, targets: Array) -> Node:
 	var best_target: Node = null
@@ -517,58 +736,50 @@ func _on_recruit_pressed(unit_type: String) -> void:
 	if _selected == null:
 		_log("Sélectionnez d'abord un camp !")
 		return
-
 	if _selected.owner_id != local_player_id:
 		_log("Ce camp ne vous appartient pas !")
 		return
-
-	var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
-
-	# Verifie et deduit l or du tableau unifie _gold
-	if local_player_id >= _gold.size() or _gold[local_player_id] < price:
-		_log("Pas assez d or ! (%d requis)" % price)
+	if not _can_recruit_unit_at_camp(_selected, unit_type):
+		_log("Cette unité n'est pas disponible dans ce camp.")
 		return
-
 	if _selected.production_queue.size() >= MAX_QUEUE:
 		_log("File pleine !")
 		return
-
-	_gold[local_player_id] -= price
-
-	var bt: float = _build_time(unit_type)
-
+	var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
+	var player = GameManager.find_player_by_id(local_player_id)
+	if player == null or not player.spend_gold(price):
+		_log("Pas assez d or ! (%d requis)" % price)
+		return
+	if local_player_id < _gold.size():
+		_gold[local_player_id] = player.gold
 	var camp_idx : int = _camps.find(_selected)
-
-	# En multi : envoyer le RPC aux autres peers ET résoudre localement
 	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
-		_rpc_recruit.rpc(camp_idx, unit_type)  # envoie aux autres
-
-	# Résoudre localement dans tous les cas
+		_rpc_recruit.rpc(camp_idx, unit_type)
 	_resolve_recruit(camp_idx, unit_type)
 
 @rpc("any_peer", "reliable")
 func _rpc_recruit(camp_idx: int, unit_type: String) -> void:
 	if camp_idx < 0 or camp_idx >= _camps.size(): return
-	# Sur le peer distant : déduit l or du joueur qui a recruté
-	var price : int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
-	var sender_id : int = multiplayer.get_remote_sender_id()
-	if sender_id == 0: sender_id = local_player_id
-	if sender_id < _gold.size():
-		_gold[sender_id] -= price
 	_resolve_recruit(camp_idx, unit_type)
 
 func _resolve_recruit(camp_idx: int, unit_type: String) -> void:
 	if camp_idx < 0 or camp_idx >= _camps.size(): return
 	var camp : Node = _camps[camp_idx]
-	var bt : float = _build_time(unit_type)
-	camp.production_queue.append({
-		"unit_type": unit_type,
-		"remaining": bt
-	})
+	camp.production_queue.append({"unit_type": unit_type, "remaining": _build_time(unit_type)})
 	camp.unit_type = unit_type
 	_log("%s ajouté à la file de %s" % [unit_type, camp.camp_name])
 	_refresh_ui()
 
+func _can_recruit_unit_at_camp(camp: Node, unit_type: String) -> bool:
+	if camp == null:
+		return false
+	if camp.has_method("get_available_unit_types"):
+		return camp.get_available_unit_types().has(unit_type)
+	if camp.is_port:
+		return SEA_UNITS.has(unit_type)
+	if camp.is_neutral_hard and camp.owner_id != 0:
+		return ADVANCED_LAND_UNITS.has(unit_type)
+	return BASIC_LAND_UNITS.has(unit_type)
 
 # =============================================================================
 #  ASSIGNATION ALÉATOIRE DES CAMPS
@@ -576,54 +787,86 @@ func _resolve_recruit(camp_idx: int, unit_type: String) -> void:
 #  sans qu aucun joueur ne possède une région entière dès le départ.
 # =============================================================================
 func _randomize_camp_owners() -> void:
-	var map_data : Dictionary = MapDefs.MAPS[_map_index]
-	var regions  : Array      = map_data.get("regions", [])
-
-	# 1. Identifier les camps assignables (owner != 0 dans MapDefs = prévus pour joueurs)
-	var assignable : Array = []
-	for i in range(_camps.size()):
-		var d = map_data["camps"][i]
-		if d.get("owner", 0) != 0:
-			assignable.append(i)
-
-	if assignable.is_empty():
+	if _camps.size() < 2:
 		return
 
-	# 2. Mélanger aléatoirement
-	assignable.shuffle()
+	for camp in _camps:
+		if not is_instance_valid(camp):
+			continue
+		_set_camp_owner(camp, 0)
 
-	# 3. Distribuer également entre les joueurs actifs
-	var player_ids : Array = []
-	for p in GameManager.players:
-		player_ids.append(p.id)
+	var start_pair: Array = _pick_random_start_camps()
 
-	var num_players   : int = player_ids.size()
-	if num_players == 0:
+	if start_pair.size() < 2:
 		return
 
-	var camps_pp : int = assignable.size() / num_players
+	var p1_start: Node = start_pair[0]
+	var p2_start: Node = start_pair[1]
 
-	for p_idx in range(num_players):
-		var pid : int = player_ids[p_idx]
-		for j in range(camps_pp):
-			var ci : int = assignable[p_idx * camps_pp + j]
-			var camp = _camps[ci]
-			camp.owner_id = pid
-			if camp.has_method("change_owner"):
-				camp.change_owner(pid)
+	_set_camp_owner(p1_start, 1)
+	_set_camp_owner(p2_start, 2)
 
-	# 4. Les camps restants (si nombre impair) → neutres
-	for k in range(num_players * camps_pp, assignable.size()):
-		var ci  : int  = assignable[k]
-		var camp = _camps[ci]
-		camp.owner_id = 0
-		if camp.has_method("change_owner"):
-			camp.change_owner(0)
+	print("[Main] Camp départ joueur : ", p1_start.camp_name)
+	print("[Main] Camp départ adversaire : ", p2_start.camp_name)
 
-	# 5. Vérifier qu aucun joueur ne possède une région entière dès le départ
-	_fix_complete_regions(regions)
-	print("[Main] Camps randomisés : ", assignable.size(), " camps pour ", num_players, " joueurs")
+	_refresh_ui()
+	if _overlay:
+		_overlay.queue_redraw()
 
+
+func _pick_random_start_camps() -> Array:
+	var valid_camps: Array = []
+
+	for camp in _camps:
+		if not is_instance_valid(camp):
+			continue
+		if camp.is_port:
+			continue
+		if camp.is_neutral_hard:
+			continue
+		valid_camps.append(camp)
+
+	if valid_camps.size() < 2:
+		return []
+
+	valid_camps.shuffle()
+
+	var min_distance: float = 420.0
+	var best_pair: Array = []
+	var best_distance: float = 0.0
+
+	for i in range(valid_camps.size()):
+		for j in range(i + 1, valid_camps.size()):
+			var a: Node = valid_camps[i]
+			var b: Node = valid_camps[j]
+			var dist: float = a.global_position.distance_to(b.global_position)
+
+			if dist >= min_distance:
+				return [a, b]
+
+			if dist > best_distance:
+				best_distance = dist
+				best_pair = [a, b]
+
+	return best_pair
+
+
+func _set_camp_owner(camp: Node, new_owner_id: int) -> void:
+	if not is_instance_valid(camp):
+		return
+
+	var new_color: Color = _get_owner_color(new_owner_id)
+
+	if camp.has_method("change_owner"):
+		camp.change_owner(new_owner_id, new_color)
+	else:
+		camp.owner_id = new_owner_id
+
+	if camp.has_method("set_team_color"):
+		camp.set_team_color(new_color)
+
+	if _overlay:
+		_overlay.queue_redraw()
 
 func _fix_complete_regions(regions: Array) -> void:
 	for region in regions:
@@ -710,7 +953,6 @@ func _on_end_turn() -> void:
 # REVENUS
 # ─────────────────────────────────────────────────────────────────────────────
 func _distribute_income() -> void:
-	# Seul l hote distribue les revenus en mode multi
 	if GameConfig.mode == "multi" and not GameConfig.is_host:
 		return
 	var regions : Array = MapDefs.MAPS[_map_index].get("regions", [])
@@ -722,11 +964,13 @@ func _distribute_income() -> void:
 		for region in regions:
 			if _region_owner(region["camps"]) == p_id:
 				inc += region["bonus"]
+		var player = GameManager.find_player_by_id(p_id)
+		if player:
+			player.add_gold(inc)
 		if p_id < _gold.size():
-			_gold[p_id] += inc
+			_gold[p_id] = player.gold if player else _gold[p_id] + inc
 		_log("Joueur %d +%d or" % [p_id, inc])
 	_refresh_ui()
-
 
 func _region_owner(camp_indices: Array) -> int:
 	if camp_indices.is_empty():
@@ -881,7 +1125,7 @@ func _refresh_leaderboard() -> void:
 		lb.remove_child(c)
 		c.free()
 
-	var COLORS := {1: Color(0.22, 0.45, 0.90), 2: Color(0.88, 0.22, 0.22)}
+	var COLORS := {1: _get_owner_color(1), 2: _get_owner_color(2)}
 
 	for p in [1, 2]:
 		var cnt : int = 0
@@ -924,52 +1168,118 @@ func _refresh_leaderboard() -> void:
 		card.add_child(sl)
 
 
-func _spawn_unit(unit_type: String, camp: Node) -> void:
+func _spawn_unit(unit_type: String, camp: Node, attach_to_camp: bool = true) -> Unit:
 	if not UNIT_SCENES.has(unit_type):
 		print("[Main] Type d'unité inconnu : ", unit_type)
-		return
-
+		return null
 	var scene = load(UNIT_SCENES[unit_type]) as PackedScene
 	if not scene:
 		print("[Main] Impossible de charger la scène : ", UNIT_SCENES[unit_type])
-		return
-
+		return null
 	var unit = scene.instantiate()
-
-	if unit.has_method("setup"):
-		unit.setup(camp.owner_id)
-	else:
-		unit.owner_id = camp.owner_id
-
-	var offset := Vector2(randf_range(-30, 30), randf_range(-30, 30))
+	var offset := Vector2(randf_range(-55, 55), randf_range(-55, 55))
 	unit.global_position = camp.global_position + offset
 	unit.z_index = 200
-
-	add_child(unit)
-
-	var sprite: AnimatedSprite2D = null
-
-	for child in unit.get_children():
-		if child is AnimatedSprite2D:
-			sprite = child
-			break
-
-	if sprite:
-		print("[SPAWN UNIT] sprite trouvé=", sprite.name)
-		sprite.visible = true
-		sprite.z_index = 10
-		sprite.play("idle")
+	if unit.has_method("setup"):
+		unit.setup(camp.owner_id, camp if attach_to_camp else null, unit_type)
 	else:
-		print("[SPAWN UNIT] aucun AnimatedSprite2D trouvé")
-		print("[SPAWN UNIT] enfants de l'unité :")
-		for child in unit.get_children():
-			print("- ", child.name, " / ", child.get_class())
+		unit.owner_id = camp.owner_id
+	add_child(unit)
+	if attach_to_camp and camp.has_method("register_unit"):
+		camp.register_unit(unit, true)
+	if unit.has_signal("unit_died") and not unit.unit_died.is_connected(_on_unit_died):
+		unit.unit_died.connect(_on_unit_died)
+	return unit
 
-	var oid : int = camp.owner_id
-	unit.tree_exiting.connect(func():
-		if oid >= 1 and oid <= 2:
-			_units_lost[oid - 1] += 1)
+func _on_unit_died(unit: Unit, killer_owner_id: int, killer_unit: Node) -> void:
+	_clear_dead_units_from_selection()
+	if unit.owner_id >= 1 and unit.owner_id <= 2:
+		_units_lost[unit.owner_id - 1] += 1
+	var player = GameManager.find_player_by_id(unit.owner_id)
+	if player:
+		player.on_unit_lost()
+	var killer_player = GameManager.find_player_by_id(killer_owner_id)
+	if killer_player:
+		killer_player.on_unit_killed()
+	_refresh_ui()
 
+func _on_camp_empty(camp: Node, killer_owner_id: int, killer_unit: Node) -> void:
+	if not is_instance_valid(camp):
+		return
+	var new_owner : int = 0
+	if killer_owner_id > 0 and is_instance_valid(killer_unit):
+		new_owner = killer_owner_id
+	_capture_camp(camp, new_owner)
+	if new_owner > 0 and is_instance_valid(killer_unit):
+		if killer_unit is Unit:
+			killer_unit.clear_target_camp()
+			killer_unit.home_camp = camp
+			camp.register_unit(killer_unit, true)
+			killer_unit.move_to(camp.global_position + Vector2(randf_range(-25, 25), randf_range(-25, 25)))
+	_check_victory()
+	_refresh_ui()
+
+func _capture_camp(camp: Node, new_owner_id: int) -> void:
+	if GameManager and GameManager.has_method("capture_camp"):
+		GameManager.capture_camp(camp, new_owner_id)
+	elif camp.has_method("change_owner"):
+		camp.change_owner(new_owner_id)
+	camp.production_queue.clear()
+	camp.unit_type = "infantry"
+	_log("✓ %s capturé par %s" % [camp.camp_name, "Neutre" if new_owner_id == 0 else "Joueur %d" % new_owner_id])
+
+func _process_unit_camp_orders() -> void:
+	for unit in get_tree().get_nodes_in_group("units"):
+		if not (unit is Unit) or not unit.is_alive:
+			continue
+		var camp = unit.target_camp
+		if camp == null or not is_instance_valid(camp):
+			continue
+		if unit.global_position.distance_to(camp.global_position) > CAMP_CAPTURE_RADIUS:
+			continue
+		if camp.owner_id == unit.owner_id:
+			unit.clear_target_camp()
+			if camp.has_method("register_unit"):
+				camp.register_unit(unit, true)
+			unit.home_camp = camp
+			_refresh_ui()
+			continue
+		if camp.has_method("has_living_garrison") and camp.has_living_garrison():
+			var defender := _get_nearest_garrison_enemy(unit, camp)
+			if defender != null and unit.current_target == null:
+				unit.nav_agent.target_position = defender.global_position
+			continue
+		if camp.units <= 0 or (camp.has_method("has_living_garrison") and not camp.has_living_garrison()):
+			_capture_camp(camp, unit.owner_id)
+			unit.clear_target_camp()
+			unit.home_camp = camp
+			if camp.has_method("register_unit"):
+				camp.register_unit(unit, true)
+			unit.move_to(camp.global_position + Vector2(randf_range(-25, 25), randf_range(-25, 25)))
+			_check_victory()
+			_refresh_ui()
+
+func _get_nearest_garrison_enemy(unit: Unit, camp: Node) -> Unit:
+	if not camp.has_method("get_available_garrison"):
+		return null
+	var nearest : Unit = null
+	var nearest_dist : float = INF
+	for defender in camp.get_available_garrison():
+		if defender is Unit and defender.owner_id != unit.owner_id and defender.is_alive:
+			var dist: float = unit.global_position.distance_to(defender.global_position)
+			if dist < nearest_dist:
+				nearest = defender
+				nearest_dist = dist
+	return nearest
+
+func _clear_dead_units_from_selection() -> void:
+	var alive : Array = []
+	for unit in _selected_units:
+		if is_instance_valid(unit) and unit.is_alive:
+			alive.append(unit)
+	_selected_units = alive
+	if _ui and _ui.has_method("update_selection_panel"):
+		_ui.update_selection_panel(_selected_units)
 
 func _log(msg: String) -> void:
 	if _ui and _ui.has_method("add_log"):
@@ -983,16 +1293,16 @@ func _log(msg: String) -> void:
 func _draw_camps(canvas: Node2D) -> void:
 	if _camps.is_empty():
 		return
-	var font  : Font = ThemeDB.fallback_font
-	var r = load("res://scripts/ui/Renderer.gd").new()
-	var map_data : Dictionary = MapDefs.MAPS[_map_index]
 
-	# Convertit les camps Node en dicts pour Renderer
-	var camp_dicts : Array = []
+	var font: Font = ThemeDB.fallback_font
+	var r = load("res://scripts/ui/Renderer.gd").new()
+	var map_data: Dictionary = MapDefs.MAPS[_map_index]
+
+	var camp_dicts: Array = []
 	for c in _camps:
 		camp_dicts.append(_camp_to_dict(c))
 
-	var sel_idx : int = -1
+	var sel_idx: int = -1
 	if _selected != null:
 		sel_idx = _camps.find(_selected)
 
@@ -1004,7 +1314,7 @@ func _draw_camps(canvas: Node2D) -> void:
 		map_data.get("has_water", false),
 		map_data.get("land_zones", []),
 		_game_over,
-		PLAYER_NAMES[1 - local_player_id] if _game_over else "")
+		"")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # OVERLAY — Node2D dédié au dessin des camps (z_index élevé)
