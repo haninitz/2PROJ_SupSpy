@@ -21,16 +21,16 @@ const MAX_QUEUE       : int   = 3
 const PLAYER_NAMES    := ["Clover", "Adversaire"]
 
 const UNIT_SCENES := {
-	"infantry"   : "res://scenes/units/fantassin.tscn",
-	"range"      : "res://scenes/units/tir_distance.tscn",
-	"heavy"      : "res://scenes/units/lourd.tscn",
-	"anti_armor" : "res://scenes/units/anti_blindage.tscn",
-	"mortar"     : "res://scenes/units/mortier.tscn",
-	"support"    : "res://scenes/units/soutien.tscn",
-	"healer"     : "res://scenes/units/soigneur.tscn",
-	"spy_yacht"      : "res://scenes/units/transport.tscn",
-	"woohp_cruiser"  : "res://scenes/units/fregate.tscn",
-	"shadow_vessel"  : "res://scenes/units/destroyer.tscn",
+	"infantry"   : "res://assets/units/fantassin.tscn",
+	"range"      : "res://assets/units/tir_distance.tscn",
+	"heavy"      : "res://assets/units/lourd.tscn",
+	"anti_armor" : "res://assets/units/anti_blindage.tscn",
+	"mortar"     : "res://assets/units/mortier.tscn",
+	"support"    : "res://assets/units/soutien.tscn",
+	"healer"     : "res://assets/units/soigneur.tscn",
+	"spy_yacht"      : "res://assets/units/transport.tscn",
+	"woohp_cruiser"  : "res://assets/units/fregate.tscn",
+	"shadow_vessel"  : "res://assets/units/destroyer.tscn",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ const UNIT_SCENES := {
 var _camps          : Array = []   # Array[Camp] — nodes du groupe "camps"
 var camps           : Array :   # alias public pour minimap.gd
 	get: return _camps
-var _gold           : Array = [0, 150, 150]  # index = owner_id (0=neutre,1=j1,2=j2)
+var _gold           : Array = [0, 100000, 150]  # index = owner_id (0=neutre,1=j1,2=j2)
 var local_player_id: int = 1
 var _ai_enabled: bool = false
 var _ai_player_id: int = 2
@@ -50,6 +50,7 @@ var _map_index      : int   = 0
 var _game_over      : bool  = false
 var _income_timer   : float = 0.0
 var _overlay        : CampOverlay = null
+var _selected_unit: Unit = null
 
 
 # ── Statistiques de fin de partie ────────────────────────────────────────────
@@ -141,10 +142,14 @@ func _start_game() -> void:
 		camp.unit_type    = "infantry"
 		camp.production_queue = []
 		camp.owner_id = int(d.get("owner", 0))
+		print("Camp ", camp.camp_name, " initialisé avec owner_id ", camp.owner_id)
 		if camp.has_method("change_owner"):
 			camp.change_owner(camp.owner_id)
 		add_child(camp)
 		_camps.append(camp)
+		var visual_count: int = mini(camp.units, 3)
+		for j in range(visual_count):
+			_spawn_unit(camp.unit_type, camp)
 	GameManager.start_game_with_camps(_camps)
 
 	# Assignation aléatoire — uniquement chez l hote (ou en mode solo/IA)
@@ -237,17 +242,33 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _game_over or _camps.is_empty():
 		return
+
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 		return
 
 	var click : Vector2 = get_global_mouse_position()
-	var clicked : Node  = _get_camp_at(click)
+
+	var clicked_unit := _get_unit_at(click)
+
+	if clicked_unit != null:
+		if clicked_unit.can_be_controlled_by(local_player_id):
+			_selected_unit = clicked_unit
+			_log("Unité sélectionnée")
+		else:
+			_log("Cette unité ne vous appartient pas !")
+		return
+
+	if _selected_unit != null:
+		if _selected_unit.can_be_controlled_by(local_player_id):
+			_selected_unit.move_to(click)
+		return
+
+	var clicked : Node = _get_camp_at(click)
 
 	if clicked == null:
 		_deselect()
 		return
 
-	# Pas de sélection → sélectionner si camp allié
 	if _selected == null:
 		if clicked.owner_id == local_player_id:
 			_select(clicked)
@@ -255,17 +276,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			_log("Ce camp ne vous appartient pas !")
 		return
 
-	# Même camp → désélectionner
 	if clicked == _selected:
 		_deselect()
 		return
 
-	# Camp allié → changer sélection
 	if clicked.owner_id == local_player_id:
 		_select(clicked)
 		return
 
-	# Ennemi ou neutre → ATTAQUE
 	if _selected.units < 1:
 		_log("Pas d unités dans ce camp !")
 		return
@@ -279,6 +297,11 @@ func _get_camp_at(pos: Vector2) -> Node:
 			return camp
 	return null
 
+func _get_unit_at(pos: Vector2) -> Unit:
+	for unit in get_tree().get_nodes_in_group("units"):
+		if unit is Unit and unit.global_position.distance_to(pos) <= 32.0:
+			return unit
+	return null
 
 func _select(camp: Node) -> void:
 	_selected = camp
@@ -889,20 +912,45 @@ func _refresh_leaderboard() -> void:
 
 func _spawn_unit(unit_type: String, camp: Node) -> void:
 	if not UNIT_SCENES.has(unit_type):
+		print("[Main] Type d'unité inconnu : ", unit_type)
 		return
+
 	var scene = load(UNIT_SCENES[unit_type]) as PackedScene
 	if not scene:
+		print("[Main] Impossible de charger la scène : ", UNIT_SCENES[unit_type])
 		return
-	var unit = scene.instantiate()
-	unit.owner_id = camp.owner_id
-	var offset := Vector2(randf_range(-30, 30), randf_range(-30, 30))
-	unit.position = camp.position + offset
-	if _overlay:
-		_overlay.add_child(unit)
-	else:
-		add_child(unit)
 
-	# Tracker la mort de l'unité pour les stats de fin
+	var unit = scene.instantiate()
+
+	if unit.has_method("setup"):
+		unit.setup(camp.owner_id)
+	else:
+		unit.owner_id = camp.owner_id
+
+	var offset := Vector2(randf_range(-30, 30), randf_range(-30, 30))
+	unit.global_position = camp.global_position + offset
+	unit.z_index = 200
+
+	add_child(unit)
+
+	var sprite: AnimatedSprite2D = null
+
+	for child in unit.get_children():
+		if child is AnimatedSprite2D:
+			sprite = child
+			break
+
+	if sprite:
+		print("[SPAWN UNIT] sprite trouvé=", sprite.name)
+		sprite.visible = true
+		sprite.z_index = 10
+		sprite.play("idle")
+	else:
+		print("[SPAWN UNIT] aucun AnimatedSprite2D trouvé")
+		print("[SPAWN UNIT] enfants de l'unité :")
+		for child in unit.get_children():
+			print("- ", child.name, " / ", child.get_class())
+
 	var oid : int = camp.owner_id
 	unit.tree_exiting.connect(func():
 		if oid >= 1 and oid <= 2:

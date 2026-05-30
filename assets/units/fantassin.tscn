@@ -159,9 +159,8 @@ radius = 40.0
 script = ExtResource("1_1pjsb")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2096325406]
-position = Vector2(500, 300)
 sprite_frames = SubResource("SpriteFrames_lhx2i")
-animation = &"walk_down"
+animation = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=919498849]
 shape = SubResource("CapsuleShape2D_5xatw")

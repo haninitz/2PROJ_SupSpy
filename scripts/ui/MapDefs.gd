@@ -57,6 +57,69 @@ const MAPS : Array = [
 				"is_port": false, "is_neutral_hard": false,
 				"territory": [Vector2(870,315), Vector2(1152,315), Vector2(1152,620), Vector2(870,620)]
 			},
+			{
+				"name": "Agence Sam",
+				"pos": Vector2(910, 330),
+				"owner": 0, "units": 5, "income": 10,
+				"is_port": false, "is_neutral_hard": false,
+				"territory": [Vector2(800,220), Vector2(1040,220), Vector2(1040,470), Vector2(800,470)]
+			},
+			{
+				"name": "Cachette Cyber",
+				"pos": Vector2(620, 630),
+				"owner": 0, "units": 5, "income": 10,
+				"is_port": false, "is_neutral_hard": false,
+				"territory": [Vector2(500,540), Vector2(760,540), Vector2(760,710), Vector2(500,710)]
+			},
+			{
+				"name": "Villa Beverly",
+				"pos": Vector2(360, 620),
+				"owner": 0, "units": 4, "income": 9,
+				"is_port": false, "is_neutral_hard": false,
+				"territory": [Vector2(260,520), Vector2(470,520), Vector2(470,710), Vector2(260,710)]
+			},
+			{
+				"name": "Bunker Rose",
+				"pos": Vector2(720, 85),
+				"owner": 0, "units": 6, "income": 12,
+				"is_port": false, "is_neutral_hard": true,
+				"territory": [Vector2(610,20), Vector2(835,20), Vector2(835,200), Vector2(610,200)]
+			},
+			{
+				"name": "Base Lunaire",
+				"pos": Vector2(530, 560),
+				"owner": 0, "units": 5, "income": 10,
+				"is_port": false, "is_neutral_hard": false,
+				"territory": [Vector2(415,475), Vector2(645,475), Vector2(645,670), Vector2(415,670)]
+			},
+			{
+				"name": "Station Laser",
+				"pos": Vector2(170, 330),
+				"owner": 0, "units": 5, "income": 10,
+				"is_port": false, "is_neutral_hard": false,
+				"territory": [Vector2(60,245), Vector2(280,245), Vector2(280,440), Vector2(60,440)]
+			},
+			{
+				"name": "Studio Espion",
+				"pos": Vector2(115, 120),
+				"owner": 0, "units": 4, "income": 8,
+				"is_port": false, "is_neutral_hard": false,
+				"territory": [Vector2(20,40), Vector2(220,40), Vector2(220,230), Vector2(20,230)]
+			},
+			{
+				"name": "Centre WOOHP Nord",
+				"pos": Vector2(390, 95),
+				"owner": 0, "units": 5, "income": 10,
+				"is_port": false, "is_neutral_hard": false,
+				"territory": [Vector2(285,25), Vector2(500,25), Vector2(500,205), Vector2(285,205)]
+			},
+			{
+				"name": "QG Fantôme",
+				"pos": Vector2(610, 335),
+				"owner": 0, "units": 8, "income": 15,
+				"is_port": false, "is_neutral_hard": true,
+				"territory": [Vector2(485,240), Vector2(735,240), Vector2(735,450), Vector2(485,450)]
+			}
 		],
 		"forests": [
 			Vector2(275, 148), Vector2(335, 292), Vector2(270, 442),

@@ -13,7 +13,7 @@ func _ready() -> void:
 	_add("move",         _snd_move(),         -10.0)
 	_add("attack",       _snd_attack(),        -6.0)
 	_add("recruit",      _snd_recruit(),       -8.0)
-	_add("end_turn",     _snd_end_turn(),      -8.0)
+	# _add("end_turn",     _snd_end_turn(),      -8.0)
 	_add("victory",      _snd_victory(),       -4.0)
 	_add("income_chime", _snd_income_chime(),  -8.0)
 	_add("capture",      _snd_capture(),       -6.0)
@@ -108,18 +108,18 @@ func _snd_recruit() -> AudioStreamWAV:
 	return _pcm(buf)
 
 # #  Fin de tour — deux notes (Do puis Sol)
-func _snd_end_turn() -> AudioStreamWAV:
-	var n    = int(RATE * 0.55)
-	var half = n / 2
-	var buf  = PackedFloat32Array()
-	buf.resize(n)
-	for i in range(n):
-		var seg_i  = i if i < half else i - half
-		var freq   = 523.25 if i < half else 392.00   # C5 puis G4
-		var t      = float(seg_i) / RATE
-		var env    = _env(seg_i, half, 0.02, 0.45)
-		buf[i]     = sin(TAU * freq * t) * env * 0.60
-	return _pcm(buf)
+# func _snd_end_turn() -> AudioStreamWAV:
+# 	var n    = int(RATE * 0.55)
+# 	var half = n / 2
+# 	var buf  = PackedFloat32Array()
+# 	buf.resize(n)
+# 	for i in range(n):
+# 		var seg_i  = i if i < half else i - half
+# 		var freq   = 523.25 if i < half else 392.00   # C5 puis G4
+# 		var t      = float(seg_i) / RATE
+# 		var env    = _env(seg_i, half, 0.02, 0.45)
+# 		buf[i]     = sin(TAU * freq * t) * env * 0.60
+# 	return _pcm(buf)
 
 # #  Chime d'or (income) — arpège scintillant C5-E5-G5
 func _snd_income_chime() -> AudioStreamWAV:

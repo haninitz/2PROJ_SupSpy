@@ -66,7 +66,7 @@ var unit_catalogue    : Dictionary = {}
 # ─────────────────────────────────────────
 #  NOEUDS
 # ─────────────────────────────────────────
-@onready var sprite: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
+@onready var sprite: AnimatedSprite2D = get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
 @onready var health_bar: ProgressBar = get_node_or_null("HealthBar") as ProgressBar
 @onready var turret_area: Area2D = (
 	get_node_or_null("TurretRange") if has_node("TurretRange")

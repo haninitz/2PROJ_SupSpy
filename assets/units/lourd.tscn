@@ -130,7 +130,7 @@ radius = 80.0
 [node name="Lourd" type="CharacterBody2D" unique_id=874923009]
 script = ExtResource("1_y6v74")
 
-[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=1417659613]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1417659613]
 sprite_frames = SubResource("SpriteFrames_1luok")
 animation = &"walk_down"
 

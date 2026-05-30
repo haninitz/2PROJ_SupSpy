@@ -130,7 +130,7 @@ radius = 300.0
 [node name="Mortier" type="CharacterBody2D" unique_id=160510202]
 script = ExtResource("1_e1hy5")
 
-[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=2127261019]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2127261019]
 sprite_frames = SubResource("SpriteFrames_c88nf")
 animation = &"walk_up"
 

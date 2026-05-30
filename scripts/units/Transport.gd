@@ -1,23 +1,17 @@
 class_name Transport
 extends Unit
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Transport — bateau de transport, ne combat pas
-# Sert uniquement à traverser l'eau avec des unités terrestres à bord
-# Si coulé → toutes les unités embarquées sont perdues
-# ─────────────────────────────────────────────────────────────────────────────
+@export var capacite_max: int = 6           
 
-@export var capacite_max: int = 6           # nombre max d'unités embarquées
-
-var unites_embarquees: Array[Unit] = []     # unités actuellement à bord
+var unites_embarquees: Array[Unit] = []     
 
 func _ready() -> void:
 	unit_type    = UnitType.TRANSPORT
 	max_hp       = 120.0
-	damage       = 0.0     # ne combat pas
+	damage       = 0.0    
 	attack_range = 0.0
 	speed        = 80.0
-	hit_speed    = 99.0    # n'attaque jamais
+	hit_speed    = 99.0   
 	build_time   = 8.0
 	price        = 100
 	super._ready()
@@ -29,7 +23,7 @@ func embarquer(unit: Unit) -> bool:
 	if not unit is Unit:
 		return false
 	unites_embarquees.append(unit)
-	unit.hide()            # cache l'unité pendant le transport
+	unit.hide()            
 	return true
 
 # Débarque toutes les unités à destination
@@ -44,6 +38,6 @@ func debarquer() -> void:
 func die() -> void:
 	for unit in unites_embarquees:
 		if is_instance_valid(unit):
-			unit.die()    # les unités à bord sont perdues
+			unit.die()    
 	unites_embarquees.clear()
 	super.die()

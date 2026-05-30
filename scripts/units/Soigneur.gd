@@ -1,15 +1,10 @@
 class_name Soigneur
 extends Unit
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Soigneur — soigne les unités alliées proches
-# Spell activable : soin de zone pendant 6s (cooldown 18s)
-# ─────────────────────────────────────────────────────────────────────────────
-
 const HEAL_DURATION : float = 6.0
 const HEAL_COOLDOWN : float = 18.0
 const HEAL_RADIUS   : float = 100.0
-const HEAL_AMOUNT   : float = 15.0   # PV rendus par seconde
+const HEAL_AMOUNT   : float = 15.0
 
 var _spell_active : bool  = false
 var _spell_ready  : bool  = true
