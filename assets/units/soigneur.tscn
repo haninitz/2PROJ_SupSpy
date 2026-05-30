@@ -130,7 +130,7 @@ radius = 0.01
 [node name="Soigneur" type="CharacterBody2D" unique_id=1676996802]
 script = ExtResource("1_ptnda")
 
-[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=1925071848]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1925071848]
 sprite_frames = SubResource("SpriteFrames_sv8m0")
 animation = &"walk_down"
 

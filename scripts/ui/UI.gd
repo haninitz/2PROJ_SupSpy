@@ -145,11 +145,11 @@ func update_hud(player_name: String, turn: int, gold: int, income: int,
 		_hud.unit_label.visible = selected_unit != ""
 
 
-func disable_end_btn() -> void:
-	# Cherche le bouton "Fin de tour" dans le HUD
-	var btn : Node = _hud.get_node_or_null("EndTurnBtn")
-	if btn and btn is Button:
-		btn.disabled = true
+# func disable_end_btn() -> void:
+# 	# Cherche le bouton "Fin de tour" dans le HUD
+# 	var btn : Node = _hud.get_node_or_null("EndTurnBtn")
+# 	if btn and btn is Button:
+# 		btn.disabled = true
 
 
 # ── Getters compat ────────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ func start_from_online(map_idx: int) -> void:
 
 
 func _show_map(index: int) -> void:
-	var map_names := ["MapBeverly", "MapJungle", "MapTropical"]
+	var map_names := ["MapBeverly", "MapTropical", "MapJungle"]
 	var parent := get_parent()
 	for map_name in map_names:
 		var node := parent.get_node_or_null(map_name)

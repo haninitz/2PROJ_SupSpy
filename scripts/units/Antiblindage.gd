@@ -1,11 +1,6 @@
 class_name AntiBlindage
 extends Unit
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Anti-Blindage — faible contre tout sauf le Lourd (×3)
-# Unité spécialisée, inutile sans cible Lourd
-# ─────────────────────────────────────────────────────────────────────────────
-
 func _ready() -> void:
 	unit_type    = UnitType.ANTI_BLINDAGE
 	max_hp       = 80.0

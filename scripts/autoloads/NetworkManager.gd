@@ -1,10 +1,16 @@
 extends Node
 
 # ── Config ────────────────────────────────────────────────────────────────────
-const SERVER_URL := "wss://sup-kon-quest-server.onrender.com"
-const MAX_PEERS   := 32
-# Gardé pour compatibilité avec les scripts qui lisent NetworkManager.PORT
-const PORT        := 7777
+# Connexion via RELAY WebSocket en ligne. L'hôte ET le client sont tous les deux
+# des clients WebSocket du relay (wss://…onrender.com). Le relay a été rendu
+# "Godot-compatible" : il envoie à chaque nouveau peer 4 octets (int32 LE) avec
+# son peer ID (≥ 2), ce qu'attend WebSocketMultiplayerPeer pour passer CONNECTED.
+# GameConfig.is_host = seule source de vérité pour "qui est l'hôte" (pas peer ID).
+# Le Matchmaker Render reste utilisé pour la liste des rooms uniquement.
+const RELAY_URL := "wss://sup-kon-quest-server.onrender.com"
+# PORT conservé pour compat. avec d'autres scripts (Matchmaker.gd) — non utilisé
+# pour la connexion relay.
+const PORT      := 7777
 
 # ── Signaux (identiques à avant — aucun script à changer) ─────────────────────
 signal connected_to_server
@@ -12,81 +18,120 @@ signal connection_failed
 signal player_connected(peer_id: int)
 signal player_disconnected(peer_id: int)
 signal host_disconnected
+# Signal OPTIONNEL : message d'avancement de connexion pour l'UI.
+signal connection_progress(message: String)
 
 # ── État interne ──────────────────────────────────────────────────────────────
-var _ws     : WebSocketMultiplayerPeer = null
-var _room_id_pending : String = ""   # room à rejoindre après connexion
+var _peer : WebSocketMultiplayerPeer = null
+
+# ── Timeout de connexion ──────────────────────────────────────────────────────
+# Le relay Render peut être en cold-start (plusieurs secondes). On laisse un
+# délai généreux avant d'abandonner avec un message clair.
+const CONNECT_TIMEOUT := 20.0
+var _connecting      := false
+var _connect_elapsed := 0.0
 
 # ── API publique (même signature qu'avant) ────────────────────────────────────
 
 func create_server() -> void:
-	# Avec le relay Render, "créer un serveur" = se connecter au relay
-	# et déclarer sa room. GameConfig.is_host est déjà positionné par l'appelant.
-	if _ws != null:
-		print("[NetworkManager] Déjà connecté, création ignorée.")
-		return
-	GameConfig.is_host    = true
-	GameConfig.my_peer_id = 1          # l'hôte se considère toujours peer 1
+	# L'hôte n'est PLUS un serveur Godot : il se connecte au relay comme client.
+	# GameConfig.is_host (déjà posé avant l'appel) reste la source de vérité.
+	GameConfig.is_host = true
+	connection_progress.emit("Connexion au serveur de jeu…")
 	_connect_to_relay()
 
 func join_server(ip: String) -> void:
-	# ip ignoré — on passe par le relay Render
+	# ip est ignoré : la connexion passe par le relay en ligne (plus d'ENet LAN).
 	join_server_with_port(ip, PORT)
 
 func join_server_with_port(_ip: String, _port: int) -> void:
-	# Paramètres ignorés, gardés pour compatibilité des appelants
 	GameConfig.is_host = false
+	connection_progress.emit("Connexion à la mission…")
 	_connect_to_relay()
 
-func disconnect_from_server() -> void:
-	if _ws != null:
-		multiplayer.multiplayer_peer = null
-		_ws = null
-	GameConfig.reset()
-
-# ── Connexion au relay ────────────────────────────────────────────────────────
-
 func _connect_to_relay() -> void:
-	_ws = WebSocketMultiplayerPeer.new()
-	var err := _ws.create_client(SERVER_URL)
+	if _peer != null:
+		print("[NetworkManager] Déjà connecté, création ignorée.")
+		return
+	var url := RELAY_URL + "/?room=" + GameConfig.room_name
+	_peer = WebSocketMultiplayerPeer.new()
+	var err := _peer.create_client(url)
 	if err != OK:
-		push_error("[NetworkManager] WebSocket connexion échouée (err=%d)" % err)
-		_ws = null
+		push_error("[NetworkManager] create_client WebSocket échoué (err=%d) vers %s" % [err, url])
+		_peer = null
 		connection_failed.emit()
 		return
+	multiplayer.multiplayer_peer = _peer
 
-	multiplayer.multiplayer_peer = _ws
-
-	# Connecter les signaux haut-niveau de Godot
+	# Brancher les signaux une seule fois (évite les fuites au re-clic).
 	if not multiplayer.connected_to_server.is_connected(_on_connected_ok):
-		multiplayer.connected_to_server.connect(_on_connected_ok)
+		multiplayer.connected_to_server.connect(_on_connected_ok, CONNECT_ONE_SHOT)
 	if not multiplayer.connection_failed.is_connected(_on_connection_fail):
-		multiplayer.connection_failed.connect(_on_connection_fail)
-	if not multiplayer.peer_connected.is_connected(_on_peer_connected):
-		multiplayer.peer_connected.connect(_on_peer_connected)
-	if not multiplayer.peer_disconnected.is_connected(_on_peer_disconnected):
-		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+		multiplayer.connection_failed.connect(_on_connection_fail, CONNECT_ONE_SHOT)
 
-	print("[NetworkManager] Connexion WebSocket vers %s…" % SERVER_URL)
+	_connecting      = true
+	_connect_elapsed = 0.0
+	print("[NetworkManager] Connexion WebSocket vers %s…" % url)
 
-func _process(_delta: float) -> void:
-	# WebSocketMultiplayerPeer doit être pollé manuellement à chaque frame
-	if _ws != null:
-		_ws.poll()
+func disconnect_from_server() -> void:
+	_teardown()
+	GameConfig.reset()
+
+func _teardown() -> void:
+	_connecting      = false
+	_connect_elapsed = 0.0
+	if _peer != null:
+		multiplayer.multiplayer_peer = null
+		_peer = null
+
+# ── Cycle de vie ──────────────────────────────────────────────────────────────
+
+func _ready() -> void:
+	# Signaux stables sur toute la durée de vie du node.
+	multiplayer.peer_connected.connect(_on_peer_connected)
+	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	# Réveiller relay + Matchmaker Render — ils peuvent être en veille (cold-start).
+	_wake_servers()
+
+func _wake_servers() -> void:
+	for url in [
+		"https://sup-kon-quest-server.onrender.com",
+		"https://sup-kon-quest-matchmaker.onrender.com",
+	]:
+		var h := HTTPRequest.new()
+		add_child(h)
+		h.request_completed.connect(func(_r, _c, _hh, _b): h.queue_free())
+		h.request(url)
+	print("[NetworkManager] Réveil du relay et du Matchmaker Render…")
+
+func _process(delta: float) -> void:
+	# WebSocketMultiplayerPeer est pollé automatiquement par la SceneTree : on
+	# surveille juste le timeout de connexion.
+	if not _connecting:
+		return
+	_connect_elapsed += delta
+	if _connect_elapsed >= CONNECT_TIMEOUT:
+		push_error("[NetworkManager] Timeout : relay injoignable (%s)" % RELAY_URL)
+		_teardown()
+		connection_progress.emit("Le serveur ne répond pas. Réessaie dans un instant.")
+		connection_failed.emit()
 
 # ── Callbacks Godot multiplayer ───────────────────────────────────────────────
 
 func _on_connected_ok() -> void:
+	_connecting      = false
+	_connect_elapsed = 0.0
 	GameConfig.my_peer_id = multiplayer.get_unique_id()
-	if GameConfig.is_host:
-		GameConfig.my_peer_id = 1      # convention : hôte = peer 1
 	print("[NetworkManager] Connecté ! ID = %d (hôte=%s)" \
 		% [GameConfig.my_peer_id, GameConfig.is_host])
+	connection_progress.emit("Connecté !")
 	connected_to_server.emit()
 
 func _on_connection_fail() -> void:
-	push_error("[NetworkManager] Connexion WebSocket échouée")
-	_ws = null
+	_connecting = false
+	push_error("[NetworkManager] Connexion au relay WebSocket échouée")
+	_teardown()
+	connection_progress.emit("Connexion échouée. Réessaie.")
 	connection_failed.emit()
 
 func _on_peer_connected(id: int) -> void:
@@ -98,11 +143,13 @@ func _on_peer_connected(id: int) -> void:
 func _on_peer_disconnected(id: int) -> void:
 	print("[NetworkManager] Peer déconnecté : %d" % id)
 	player_disconnected.emit(id)
-	if id == 1 and not GameConfig.is_host:
+	# En 1v1 via relay, l'hôte n'est plus peer 1 : si JE suis client, tout peer
+	# qui part est l'hôte (l'unique autre joueur).
+	if not GameConfig.is_host:
 		print("[NetworkManager] L'hôte s'est déconnecté !")
 		host_disconnected.emit()
 		disconnect_from_server()
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
 	else:
 		var scene := get_tree().current_scene
 		if scene.has_method("on_player_left"):
@@ -112,7 +159,7 @@ func _on_peer_disconnected(id: int) -> void:
 
 # ── RPCs de synchronisation de jeu (inchangés) ───────────────────────────────
 
-@rpc("authority", "reliable")
+@rpc("any_peer", "reliable")
 func sync_initial_state(state: Dictionary) -> void:
 	GameConfig.initial_state = state
 	print("[NetworkManager] État initial reçu")
@@ -153,7 +200,7 @@ func sync_attack(src_camp: int, tgt_camp: int) -> void:
 	if scene.has_method("on_attack"):
 		scene.on_attack(src_camp, tgt_camp)
 
-@rpc("authority", "reliable")
+@rpc("any_peer", "reliable")
 func sync_income(player_id: int, amount: int) -> void:
 	if multiplayer.get_unique_id() == player_id:
 		GameConfig.gold += amount
@@ -161,7 +208,7 @@ func sync_income(player_id: int, amount: int) -> void:
 		if scene.has_method("on_income_received"):
 			scene.on_income_received(GameConfig.gold)
 
-@rpc("authority", "reliable")
+@rpc("any_peer", "reliable")
 func sync_game_over(winner_id: int) -> void:
 	var i_won := (winner_id == multiplayer.get_unique_id())
 	Matchmaker.update_stats(GameConfig.token, i_won)

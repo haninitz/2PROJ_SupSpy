@@ -1,15 +1,10 @@
 class_name Soutien
 extends Unit
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Soutien — améliore les unités alliées proches
-# Spell activable : boost attaque/vitesse/dégâts pendant 8s (cooldown 20s)
-# ─────────────────────────────────────────────────────────────────────────────
-
 const BOOST_DURATION  : float = 8.0
 const BOOST_COOLDOWN  : float = 20.0
 const BOOST_RADIUS    : float = 120.0
-const BOOST_MULT      : float = 1.5   # ×1.5 dégâts et vitesse
+const BOOST_MULT      : float = 1.5
 
 var _spell_active   : bool  = false
 var _spell_ready    : bool  = true

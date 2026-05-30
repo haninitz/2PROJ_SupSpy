@@ -39,7 +39,7 @@ enum UnitType {
 # ÉTAT — géré en cours de jeu
 # ─────────────────────────────────────────────────────────────────────────────
 var hp: float = max_hp
-var owner_id: int = -1       # -1 = neutre, 0 = Joueur 1, 1 = Joueur 2 (cohérent avec Main.gd)
+var owner_id: int = 0       # -1 = neutre, 0 = Joueur 1, 1 = Joueur 2 (cohérent avec Main.gd)
 var current_target: Unit = null
 var is_alive: bool = true
 
@@ -204,10 +204,20 @@ func _physics_process(_delta: float) -> void:
 	move_and_slide()
 
 func _play_anim(anim_name: String) -> void:
-	var sprite = get_node_or_null("AnimatedSprite2D")
-	if sprite is AnimatedSprite2D:
-		if sprite.sprite_frames and sprite.sprite_frames.has_animation(anim_name):
+	var sprite := get_sprite()
+
+	if sprite == null:
+		return
+
+	if sprite.sprite_frames and sprite.sprite_frames.has_animation(anim_name):
+		if sprite.animation != anim_name:
 			sprite.play(anim_name)
+
+func get_sprite() -> AnimatedSprite2D:
+	for child in get_children():
+		if child is AnimatedSprite2D:
+			return child
+	return null
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COMBAT — détection automatique + attaque
@@ -292,3 +302,8 @@ func setup(p_owner_id: int) -> void:
 	owner_id = p_owner_id
 	hp = max_hp
 	is_alive = true
+	add_to_group("units")
+	add_to_group("player_%d_units" % owner_id)
+
+func can_be_controlled_by(player_id: int) -> bool:
+	return owner_id == player_id

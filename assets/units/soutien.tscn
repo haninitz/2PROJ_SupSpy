@@ -5,6 +5,8 @@
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_utu1l"]
 
+[sub_resource type="SpriteFrames" id="SpriteFrames_yfb7y"]
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_5vo1j"]
 radius = 50.0
 
@@ -135,7 +137,8 @@ shape = SubResource("CapsuleShape2D_utu1l")
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=1463961144]
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=2049926268]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2049926268]
+sprite_frames = SubResource("SpriteFrames_yfb7y")
 
 [node name="AttackTimer" type="Timer" parent="." unique_id=774119781]
 wait_time = 1.5
@@ -149,6 +152,6 @@ wait_time = 1.5
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=631546852]
 shape = SubResource("CircleShape2D_5vo1j")
 
-[node name="Sprite2D2" type="AnimatedSprite2D" parent="." unique_id=2146044322]
+[node name="AnimatedSprite2D2" type="AnimatedSprite2D" parent="." unique_id=2146044322]
 sprite_frames = SubResource("SpriteFrames_hx5qt")
 animation = &"walk_down"

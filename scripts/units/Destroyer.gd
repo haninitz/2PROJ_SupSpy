@@ -1,12 +1,6 @@
 class_name Destroyer
 extends Unit
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Destroyer — équivalent du Lourd sur l'eau avec dégâts de zone
-# Très puissant, lent, dégâts de zone autour de sa cible
-# Domine les Frégates et Transports
-# ─────────────────────────────────────────────────────────────────────────────
-
 @export var zone_radius: float = 60.0       # rayon des dégâts de zone
 @export var min_damage_ratio: float = 0.4   # dégâts minimum en bord de zone (40%)
 

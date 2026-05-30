@@ -106,22 +106,6 @@ func _build_stats_bar() -> void:
 	camps_label.visible  = false
 	msg_label.visible    = false
 
-	var end_btn := Button.new()
-	end_btn.name     = "EndTurnBtn"
-	end_btn.text     = "⏭  Fin de tour"
-	end_btn.position = Vector2(U.WIN_W - 180, U.MAP_H + 8)
-	end_btn.size     = Vector2(170, 36)
-	end_btn.add_theme_stylebox_override("normal",
-		U.flat(Color(0.10, 0.04, 0.18), U.C_PINK, 2, 6))
-	end_btn.add_theme_color_override("font_color", U.C_WHITE)
-	end_btn.visible = false
-	end_btn.pressed.connect(func():
-		Sound.play("end_turn")
-		var ui = get_parent()
-		if ui and ui.has_signal("end_turn_pressed"):
-			ui.end_turn_pressed.emit())
-	add_child(end_btn)
-
 
 func _build_leaderboard() -> void:
 	_lb_bg = Panel.new()

@@ -33,7 +33,6 @@ const STRINGS = {
 		"gold":           "Or : %d",
 		"income":         "+%d /tour",
 		"camps":          "Camps : %d",
-		"end_turn":       "Fin de tour",
 		"unit_label":     "Unité : %s",
 		"queue_empty":    "vide",
 		"queue_type":     "Type",

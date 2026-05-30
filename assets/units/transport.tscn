@@ -50,6 +50,6 @@ shape = SubResource("CapsuleShape2D_dg1jv")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RangeArea" unique_id=2077215435]
 shape = SubResource("CircleShape2D_b4apj")
 
-[node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=295907031]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=295907031]
 sprite_frames = SubResource("SpriteFrames_daiqc")
 animation = &"move"
