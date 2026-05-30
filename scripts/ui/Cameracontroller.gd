@@ -20,9 +20,8 @@ var _cam_origin : Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
-	zoom     = Vector2(1.0, 1.0)
-	# Centre sur le milieu de ta map
-	position = Vector2(MAP_X + MAP_W * 0.5, MAP_Y + MAP_H * 0.5)
+	zoom     = Vector2(0.5, 0.5)
+	position = Vector2(576, 310)
 
 
 func _unhandled_input(event: InputEvent) -> void:
