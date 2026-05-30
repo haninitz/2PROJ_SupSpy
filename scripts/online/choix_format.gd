@@ -8,6 +8,10 @@ const C_CYAN   := Color(0.00, 0.90, 0.88)
 const C_GOLD   := Color(1.00, 0.85, 0.20)
 const C_WHITE  := Color(1.00, 1.00, 1.00)
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 func _ready() -> void:
 	_build()
 
@@ -33,7 +37,7 @@ func _build() -> void:
 	add_child(panel)
 
 	var title := Label.new()
-	title.text = "✦  FORMAT DE MISSION  ✦"
+	title.text = _lt("format_title")
 	title.position = Vector2(0, 36)
 	title.size = Vector2(440, 50)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -47,19 +51,19 @@ func _build() -> void:
 	div.size = Vector2(380, 1)
 	panel.add_child(div)
 
-	var btn_1v1 := _btn(panel, "✦  1 VS 1  —  Duel d'agentes", Vector2(30, 115), C_PINK)
+	var btn_1v1 := _btn(panel, _lt("format_1v1"), Vector2(30, 115), C_PINK)
 	btn_1v1.pressed.connect(func(): _select("1v1"))
-	_desc(panel, "Face a face — la mission la plus intense", Vector2(30, 169))
+	_desc(panel, _lt("format_1v1_desc"), Vector2(30, 169))
 
-	var btn_2v2 := _btn(panel, "✦  2 VS 2  —  Equipes de choc", Vector2(30, 195), C_PURPLE)
+	var btn_2v2 := _btn(panel, _lt("format_2v2"), Vector2(30, 195), C_PURPLE)
 	btn_2v2.pressed.connect(func(): _select("2v2"))
-	_desc(panel, "Coordonne-toi avec ton equipiere", Vector2(30, 249))
+	_desc(panel, _lt("format_2v2_desc"), Vector2(30, 249))
 
-	var btn_3v3 := _btn(panel, "✦  3 VS 3  —  Guerre totale", Vector2(30, 275), C_CYAN)
+	var btn_3v3 := _btn(panel, _lt("format_3v3"), Vector2(30, 275), C_CYAN)
 	btn_3v3.pressed.connect(func(): _select("3v3"))
-	_desc(panel, "Le plus grand affrontement W.O.O.H.P", Vector2(30, 329))
+	_desc(panel, _lt("format_3v3_desc"), Vector2(30, 329))
 
-	var btn_back := _btn(panel, "← Retour", Vector2(30, 375), Color(0.30, 0.20, 0.45))
+	var btn_back := _btn(panel, _lt("back"), Vector2(30, 375), Color(0.30, 0.20, 0.45))
 	btn_back.pressed.connect(_on_back_pressed)
 
 func _select(f: String) -> void:

@@ -29,7 +29,7 @@ func get_max_players() -> int:
 	return 2
 
 func get_players_per_team() -> int:
-	return get_max_players()
+	return get_max_players() / 2
 
 func reset() -> void:
 	mode       = ""

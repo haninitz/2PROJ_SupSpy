@@ -144,7 +144,7 @@ func _on_register_success(token: String, pseudo: String, username: String) -> vo
 	if f: f.store_string(token); f.close()
 	_status.text = "Bienvenue agente %s !" % pseudo
 	await get_tree().create_timer(1.0).timeout
-	SceneLoader.goto("res://scenes/online/OnlineMenu.tscn")
+	SceneLoader.goto("res://scenes/Main.tscn")
 
 func _on_auth_error(message: String) -> void:
 	_status.text = "Erreur : %s" % message; _btn_register.disabled = false

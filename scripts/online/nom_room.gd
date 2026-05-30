@@ -1,6 +1,10 @@
 extends Control
 # nom_room.gd — SupKonQuest · Totally Spies
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 const C_BG := Color(0.04, 0.02, 0.10); const C_PINK := Color(1.00, 0.20, 0.58)
 const C_PURPLE := Color(0.55, 0.15, 0.85); const C_GOLD := Color(1.00, 0.85, 0.20)
 const C_WHITE := Color(1.00, 1.00, 1.00)
@@ -18,13 +22,13 @@ func _build() -> void:
 	panel.position = Vector2(1152.0/2-220, 720.0/2-200); panel.size = Vector2(440, 380)
 	panel.add_theme_stylebox_override("panel", _flat(C_BG, C_PINK, 2, 14)); add_child(panel)
 
-	var title := Label.new(); title.text = "✦  NOM DE LA MISSION  ✦"
+	var title := Label.new(); title.text = _lt("nomroom_title")
 	title.position = Vector2(0, 36); title.size = Vector2(440, 50)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", C_PINK); panel.add_child(title)
 
-	var lbl := Label.new(); lbl.text = "Nom de la room"
+	var lbl := Label.new(); lbl.text = _lt("nomroom_label")
 	lbl.position = Vector2(30, 108); lbl.size = Vector2(380, 18)
 	lbl.add_theme_font_size_override("font_size", 11)
 	lbl.add_theme_color_override("font_color", Color(0.80, 0.55, 0.75)); panel.add_child(lbl)
@@ -33,9 +37,9 @@ func _build() -> void:
 	_input_room.position = Vector2(30, 126); _input_room.size = Vector2(380, 42)
 	_input_room.add_theme_font_size_override("font_size", 16); panel.add_child(_input_room)
 
-	_btn_create = _btn(panel, "→  LANCER LA MISSION", Vector2(30, 195), C_PINK)
+	_btn_create = _btn(panel, _lt("nomroom_launch"), Vector2(30, 195), C_PINK)
 	_btn_create.pressed.connect(_on_create_pressed)
-	_btn(panel, "← Retour", Vector2(30, 258), Color(0.30, 0.20, 0.45)).pressed.connect(
+	_btn(panel, _lt("back"), Vector2(30, 258), Color(0.30, 0.20, 0.45)).pressed.connect(
 		func(): SceneLoader.goto("res://scenes/online/ChoixMap.tscn"))
 
 	_status = Label.new(); _status.position = Vector2(30, 318); _status.size = Vector2(380, 20)
@@ -55,11 +59,10 @@ func _on_create_pressed() -> void:
 	_btn_create.disabled = true
 	_status.text         = "Enregistrement de la room…"
 
-	# Nettoyer toute connexion résiduelle
-	if multiplayer.multiplayer_peer != null:
-		multiplayer.multiplayer_peer.close()
-		multiplayer.multiplayer_peer = null
-		await get_tree().create_timer(0.15).timeout
+	# Nettoyer toute connexion résiduelle via NetworkManager pour garder
+	# _peer et multiplayer.multiplayer_peer synchronisés (évite le désync).
+	NetworkManager.reset_connection()
+	await get_tree().create_timer(0.15).timeout
 
 	# Étape 1 : enregistrer sur le matchmaker (rapide)
 	# La connexion au serveur de jeu se fait en salle d'attente

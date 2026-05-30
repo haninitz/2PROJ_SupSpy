@@ -23,6 +23,7 @@ signal connection_progress(message: String)
 
 # ── État interne ──────────────────────────────────────────────────────────────
 var _peer : WebSocketMultiplayerPeer = null
+var _connected_room : String = ""
 
 # ── Timeout de connexion ──────────────────────────────────────────────────────
 # Le relay Render peut être en cold-start (plusieurs secondes). On laisse un
@@ -50,10 +51,35 @@ func join_server_with_port(_ip: String, _port: int) -> void:
 	_connect_to_relay()
 
 func _connect_to_relay() -> void:
+	var want_room := GameConfig.room_name
+
+	# Auto-réparation du désync : du code externe (nom_room / liste_rooms) a pu
+	# faire multiplayer.multiplayer_peer = null sans nettoyer _peer. La connexion
+	# est alors morte → on repart proprement.
+	if _peer != null and multiplayer.multiplayer_peer == null:
+		_peer = null
+		_connected_room = ""
+
 	if _peer != null:
-		print("[NetworkManager] Déjà connecté, création ignorée.")
-		return
-	var url := RELAY_URL + "/?room=" + GameConfig.room_name
+		var st := _peer.get_connection_status()
+		if _connected_room != want_room:
+			# Mauvaise room (ex. connexion parasite room="") → reconnexion propre.
+			print("[NetworkManager] Room différente ('%s'→'%s'), reconnexion." \
+				% [_connected_room, want_room])
+			_teardown()
+		elif st == MultiplayerPeer.CONNECTION_CONNECTED:
+			# Bonne room, déjà connecté : ré-émettre pour débloquer l'appelant
+			# (salle d'attente) qui attend connected_to_server.
+			print("[NetworkManager] Déjà connecté à '%s', ré-émission." % want_room)
+			GameConfig.my_peer_id = multiplayer.get_unique_id()
+			connected_to_server.emit()
+			return
+		else:
+			# Bonne room, connexion encore en cours : _on_connected_ok s'en charge.
+			print("[NetworkManager] Connexion à '%s' déjà en cours." % want_room)
+			return
+
+	var url := RELAY_URL + "/?room=" + want_room
 	_peer = WebSocketMultiplayerPeer.new()
 	var err := _peer.create_client(url)
 	if err != OK:
@@ -62,6 +88,7 @@ func _connect_to_relay() -> void:
 		connection_failed.emit()
 		return
 	multiplayer.multiplayer_peer = _peer
+	_connected_room = want_room
 
 	# Brancher les signaux une seule fois (évite les fuites au re-clic).
 	if not multiplayer.connected_to_server.is_connected(_on_connected_ok):
@@ -76,10 +103,15 @@ func _connect_to_relay() -> void:
 func disconnect_from_server() -> void:
 	_teardown()
 	GameConfig.reset()
+# Coupe la connexion en gardant _peer et multiplayer.multiplayer_peer
+# synchronisés, SANS toucher à GameConfig (room_name/is_host/agent_name conservés).
+func reset_connection() -> void:
+	_teardown()
 
 func _teardown() -> void:
 	_connecting      = false
 	_connect_elapsed = 0.0
+	_connected_room  = ""
 	if _peer != null:
 		multiplayer.multiplayer_peer = null
 		_peer = null

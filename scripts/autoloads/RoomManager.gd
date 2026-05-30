@@ -137,17 +137,15 @@ func _broadcast_list(room_id: String) -> void:
 	var data: Array = rooms[room_id].players.values()
 	data.sort_custom(func(a, b): return a.join_order < b.join_order)
 	var host_id: int = rooms[room_id].get("host_id", -1)
+	var fmt: String  = rooms[room_id].get("format", GameConfig.format)
 	for pid in rooms[room_id].players:
-		# On émet localement pour l'entrée de l'hôte (le peer courant), et on
-		# fait un RPC vers tous les autres. On ne dépend PAS de my_peer_id :
-		# is_host + host_id stocké à la création identifient l'hôte de façon sûre.
 		if GameConfig.is_host and pid == host_id:
+			GameConfig.format = fmt            # autorité : format de la room
 			GameConfig.players.clear()
 			for p in data: GameConfig.players[p.id] = p
 			player_list_updated.emit(room_id, data)
 		else:
-			# Relay broadcast : en 1v1, .rpc() atteint l'unique autre joueur.
-			_receive_list.rpc(room_id, data)
+			_receive_list.rpc(room_id, data, fmt)
 
 @rpc("any_peer", "reliable")
 func _confirm_join(room_id: String, team: String, join_order: int,
@@ -162,7 +160,9 @@ func _notify_full(room_id: String) -> void:
 	room_full.emit(room_id)
 
 @rpc("any_peer", "reliable")
-func _receive_list(room_id: String, data: Array) -> void:
+func _receive_list(room_id: String, data: Array, fmt: String = "") -> void:
+	if fmt != "":
+		GameConfig.format = fmt            # autorité : format reçu de l'hôte (évite un 1v1/2v2 périmé)
 	GameConfig.players.clear()
 	for p in data: GameConfig.players[p.id] = p
 	player_list_updated.emit(room_id, data)

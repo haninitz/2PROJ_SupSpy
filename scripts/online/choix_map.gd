@@ -8,6 +8,10 @@ const C_CYAN   := Color(0.00, 0.90, 0.88)
 const C_GOLD   := Color(1.00, 0.85, 0.20)
 const C_WHITE  := Color(1.00, 1.00, 1.00)
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 func _ready() -> void: _build()
 
 func _build() -> void:
@@ -21,7 +25,7 @@ func _build() -> void:
 	add_child(panel)
 
 	var title := Label.new()
-	title.text = "✦  CHOISIR LA MAP  ✦"
+	title.text = _lt("choixmap_title")
 	title.position = Vector2(0, 36); title.size = Vector2(440, 50)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 26)
@@ -29,9 +33,9 @@ func _build() -> void:
 	panel.add_child(title)
 
 	var maps := [
-		["Beverly Hills Mall", "clover", "Île luxueuse avec boutiques", C_PINK],
-		["Jungle Techno", "sam",    "Bases tech dans la jungle",    C_CYAN],
-		["Île Tropicale", "alex",   "Archipel avec ports navals",   C_GOLD],
+		["Beverly Hills Mall", "clover", _lt("omap1_desc"), C_PINK],
+		["Jungle Techno",      "sam",    _lt("omap2_desc"), C_CYAN],
+		["Île Tropicale",      "alex",   _lt("omap3_desc"), C_GOLD],
 	]
 	var y := 110
 	for m in maps:
@@ -46,7 +50,7 @@ func _build() -> void:
 		panel.add_child(desc)
 		y += 88
 
-	_btn(panel, "← Retour", Vector2(30, y + 10), Color(0.30, 0.20, 0.45)).pressed.connect(
+	_btn(panel, _lt("back"), Vector2(30, y + 10), Color(0.30, 0.20, 0.45)).pressed.connect(
 		func():
 			if GameConfig.mode == "multi":
 				SceneLoader.goto("res://scenes/online/ChoixFormat.tscn")
