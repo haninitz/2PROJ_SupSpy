@@ -20,6 +20,7 @@ func _ready() -> void:
 	_add("defeat",       _snd_defeat(),        -5.0)
 	_add("ui_click",     _snd_ui_click(),     -12.0)
 	_start_music()
+	start_music()
 
 func play(name: String) -> void:
 	if _players.has(name):
@@ -210,7 +211,7 @@ func _start_music() -> void:
 	_music_player = AudioStreamPlayer.new()
 	_music_player.stream    = _snd_music()
 	_music_player.volume_db = -14.0
-	_music_player.autoplay  = true
+	_music_player.autoplay  = false  # on lance manuellement après setup
 
 	# Connecte au bus Music si disponible
 	var bus_idx : int = AudioServer.get_bus_index("Music")
@@ -221,6 +222,15 @@ func _start_music() -> void:
 
 	# Boucle infinie
 	_music_player.finished.connect(func(): _music_player.play())
+
+func start_music() -> void:
+	if _music_player and not _music_player.playing:
+		_music_player.play()
+
+
+func stop_music() -> void:
+	if _music_player and _music_player.playing:
+		_music_player.stop()
 
 
 func _snd_music() -> AudioStreamWAV:

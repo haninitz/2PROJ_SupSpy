@@ -76,6 +76,7 @@ const STRINGS = {
 		"losses":         "Défaites",
 		"volume":         "Volume",
 		"msg_victory":    "VICTOIRE DE %s !",
+		"ai_vs_you":      "AI VS TOI",
 	},
 	"en": {
 		"subtitle":       "Strategy & Conquest  •  Totally Spies",
@@ -144,6 +145,7 @@ const STRINGS = {
 		"losses":         "Losses",
 		"volume":         "Volume",
 		"msg_victory":    "%s WINS!",
+		"ai_vs_you":      "AI VS YOU",
 	},
 	"es": {
 		"subtitle":       "Estrategia & Conquista  •  Totally Spies",
@@ -212,6 +214,7 @@ const STRINGS = {
 		"losses":         "Derrotas",
 		"volume":         "Volumen",
 		"msg_victory":    "¡%s GANA!",
+		"ai_vs_you":      "IA VS TÚ",
 	}
 }
 

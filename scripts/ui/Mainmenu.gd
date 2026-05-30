@@ -26,13 +26,13 @@ var U           : Node
 # ── État sélection ────────────────────────────────────────────────────────────
 var _ai_difficulty  : String = "medium"
 var _player_team_idx : int   = 0   # index team joueur
-var _context        : String = ""  # "ai" ou "multi"
+var video_player : VideoStreamPlayer = null
 
 # ── Écrans inline ─────────────────────────────────────────────────────────────
 var _ai_screen    : Panel = null
 var _multi_screen : Panel = null
 var _play_screen  : Panel = null
-
+const VID_PATH := "res://assets/video/menu_background.ogv"
 # ── Teams (fallback si GameManager absent) ────────────────────────────────────
 const FALLBACK_TEAMS := [
 	{"name": "Neon Squad",    "color": Color(0.0,  1.0,  1.0 )},
@@ -142,12 +142,18 @@ func _build_main_menu() -> void:
 	main_menu.add_child(d1)
 
 	# ── Bouton Jouer ────────────────────────────────────────────────────────
-	var play_btn : Button = U.btn("  ▶  JOUER",
+	var play_btn : Button = U.btn("  ▶  " + U.lt("play"),
 		Vector2(U.WIN_W / 2.0 - 180, 356), Vector2(360, 58), 22)
 	play_btn.add_theme_stylebox_override("normal", U.flat(Color(0.28,0.05,0.18), U.C_PINK, 2, 12))
 	play_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.42,0.10,0.28), U.C_PINK, 2, 12))
 	play_btn.add_theme_color_override("font_color", U.C_WHITE)
-	play_btn.pressed.connect(func(): UIUtils.goto(main_menu, _play_screen))
+	play_btn.pressed.connect(func():
+		var audio_manager := _parent.get_node_or_null("/root/Sound")
+		if audio_manager and audio_manager.has_method("stop_music"):
+			audio_manager.stop_music()
+		if video_player:
+			video_player.play()
+		UIUtils.goto(main_menu, _play_screen))
 	main_menu.add_child(play_btn)
 
 	# ── Boutons secondaires ─────────────────────────────────────────────────
@@ -206,10 +212,21 @@ func _build_main_menu() -> void:
 	main_menu.add_child(ft)
 
 
+func _add_video_background(parent_screen: Panel) -> void:
+	video_player = VideoStreamPlayer.new()
+	video_player.stream = load(VID_PATH)
+	video_player.position = Vector2.ZERO
+	video_player.size = Vector2(500, 300)
+	video_player.expand = false
+	video_player.autoplay = false
+	parent_screen.add_child(video_player)
+
+
 func _build_play_screen() -> void:
 	_play_screen = U.make_screen(false)
 	_parent.add_child(_play_screen)
-	U.add_header(_play_screen, "JOUER", U.C_PINK)
+	_add_video_background(_play_screen)
+	U.add_header(_play_screen, U.lt("play"), U.C_PINK)
 
 	# Bloc AI VS TOI
 	var ai_block := Panel.new()
@@ -219,7 +236,7 @@ func _build_play_screen() -> void:
 	_play_screen.add_child(ai_block)
 
 	var ai_lbl := Label.new()
-	ai_lbl.text = "🤖  AI VS TOI"
+	ai_lbl.text = "🤖  " + U.lt("ai_vs_you")
 	ai_lbl.position = Vector2(20, 18)
 	ai_lbl.add_theme_font_size_override("font_size", 22)
 	ai_lbl.add_theme_color_override("font_color", U.C_PINK)
@@ -238,7 +255,7 @@ func _build_play_screen() -> void:
 	ai_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.42,0.10,0.28), U.C_PINK, 2, 8))
 	ai_btn.add_theme_color_override("font_color", U.C_WHITE)
 	ai_btn.pressed.connect(func():
-		_context = "ai"
+		GameConfig.mode = "ai"
 		UIUtils.goto(_play_screen, _ai_screen))
 	ai_block.add_child(ai_btn)
 
@@ -269,7 +286,7 @@ func _build_play_screen() -> void:
 	mp_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.10,0.28,0.42), U.C_CYAN, 2, 8))
 	mp_btn.add_theme_color_override("font_color", U.C_WHITE)
 	mp_btn.pressed.connect(func():
-		_context = "multi"
+		GameConfig.mode = "multi"
 		UIUtils.goto(_play_screen, _multi_screen))
 	mp_block.add_child(mp_btn)
 
@@ -282,7 +299,7 @@ func _build_play_screen() -> void:
 func _build_ai_screen() -> void:
 	_ai_screen = U.make_screen(false)
 	_parent.add_child(_ai_screen)
-	U.add_header(_ai_screen, "AI VS TOI", U.C_PINK)
+	U.add_header(_ai_screen, U.lt("ai_vs_you"), U.C_PINK)
 
 	var teams : Array = _get_teams()
 

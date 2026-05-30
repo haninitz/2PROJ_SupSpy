@@ -95,6 +95,9 @@ func _on_map_selected(index: int) -> void:
 func _start_game() -> void:
 	_game_over = false
 
+	print("[Main] Démarrage de la partie — mode : %s  map : %s" %
+		[GameConfig.mode, MapDefs.MAPS[_map_index].get("name", "?")])
+
 	# En multi : hote = joueur 1 (red), client = joueur 2 (blue)
 	if GameConfig.mode == "multi":
 		local_player_id = 1 if GameConfig.is_host else 2
@@ -104,6 +107,7 @@ func _start_game() -> void:
 
 	# L'IA ne tourne que en mode ai, et seulement chez l'hôte
 	_ai_enabled = (GameConfig.mode == "ai")
+	print("[Main] IA activée : ", _ai_enabled)
 	_ai_player_id = 2
 	_ai_timer = 0.0
 
@@ -486,6 +490,7 @@ func _ai_find_best_target(attacker: Node, targets: Array) -> Node:
 # RECRUTEMENT
 # ─────────────────────────────────────────────────────────────────────────────
 func _on_recruit_pressed(unit_type: String) -> void:
+	print("[Main] Recrutement demandé : %s" % unit_type)
 	if _selected == null:
 		_log("Sélectionnez d'abord un camp !")
 		return

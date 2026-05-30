@@ -12,6 +12,13 @@
 [node name="Main" type="Node2D" unique_id=1610255818]
 script = ExtResource("1_main")
 
+[node name="VideoStreamPlayer" type="VideoStreamPlayer" parent="." unique_id=1184511935]
+offset_left = 20.0
+offset_top = 24.0
+offset_right = 820.0
+offset_bottom = 418.0
+loop = true
+
 [node name="UI" type="CanvasLayer" parent="." unique_id=42575254]
 script = ExtResource("2_ui")
 
