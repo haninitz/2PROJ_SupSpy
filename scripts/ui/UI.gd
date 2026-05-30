@@ -204,7 +204,7 @@ func start_from_online(map_idx: int) -> void:
 
 
 func _show_map(index: int) -> void:
-	var map_names := ["MapBeverly", "MapJungle", "MapTropical"]
+	var map_names := ["MapBeverly", "MapTropical", "MapJungle"]
 	var parent := get_parent()
 	for map_name in map_names:
 		var node := parent.get_node_or_null(map_name)
