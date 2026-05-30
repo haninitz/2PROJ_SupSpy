@@ -28,6 +28,13 @@ var _ai_difficulty  : String = "med"
 var _player_team_idx : int   = 0   # index team joueur
 var video_player : VideoStreamPlayer = null
 
+# ── Leaderboard (remplissage asynchrone depuis le Matchmaker) ─────────────────
+var _lb_scr     : Panel = null            # écran overlay en cours
+var _lb_status  : Label = null            # ligne "Chargement…" / message d'erreur
+var _lb_filled  : bool  = false           # garde anti double-remplissage (réponse + timeout)
+var _lb_rows    : VBoxContainer = null    # conteneur scrollable des lignes
+var _lb_cols_x  : Array[int] = [55, 110, 330, 560, 700]   # #, AGENT, LOGIN, WINS, LOSSES
+
 # ── Écrans inline ─────────────────────────────────────────────────────────────
 var _ai_screen    : Panel = null
 var _multi_screen : Panel = null
@@ -173,6 +180,16 @@ func _build_main_menu() -> void:
 		b.add_theme_color_override("font_color", U.C_WHITE)
 		b.pressed.connect(sd["fn"])
 		main_menu.add_child(b)
+		
+	# ── Bouton Déconnexion (haut-gauche) ──────────────────────────────────────
+	var logout_btn : Button = U.btn("⏏ Déconnexion", Vector2(28, 28), Vector2(140, 34), 12)
+	logout_btn.add_theme_stylebox_override("normal",
+		U.flat(Color(0.10, 0.03, 0.06), Color(0.8, 0.1, 0.3), 2, 8))
+	logout_btn.add_theme_stylebox_override("hover",
+		U.flat(Color(0.20, 0.05, 0.10), Color(0.8, 0.1, 0.3), 2, 8))
+	logout_btn.add_theme_color_override("font_color", U.C_WHITE)
+	logout_btn.pressed.connect(func(): _on_logout())
+	main_menu.add_child(logout_btn)
 
 	# Boutons langue
 	var lang_codes  : Array[String] = ["fr", "en", "es"]
@@ -210,6 +227,18 @@ func _build_main_menu() -> void:
 	ft.size = Vector2(U.WIN_W, 20)
 	ft.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	main_menu.add_child(ft)
+
+func _on_logout() -> void:
+	Matchmaker.logout(GameConfig.token)
+	GameConfig.token      = ""
+	GameConfig.username   = ""
+	GameConfig.steam_name = ""
+	GameConfig.wins       = 0
+	GameConfig.losses     = 0
+	var dir := DirAccess.open("user://")
+	if dir and dir.file_exists("token.dat"):
+		dir.remove("token.dat")
+	SceneLoader.goto("res://scenes/online/Login.tscn")
 
 
 func _add_video_background(parent_screen: Panel) -> void:
@@ -575,24 +604,88 @@ func hide_map_screen() -> void:
 #  OVERLAYS (Classement, Paramètres)
 # =============================================================================
 func _open_leaderboard() -> void:
+	_lb_filled = false
 	_open_overlay(U.lt("leaderboard"), U.C_PURPLE, func(scr: Panel):
-		var headers : Array[String] = ["#", U.lt("player_col"), "ELO", U.lt("wins"), U.lt("losses")]
-		var cols_x  : Array[int]    = [55, 110, 380, 550, 680]
+		_lb_scr = scr
+		# En-têtes : # / AGENT (pseudo) / LOGIN (username) / Wins / Losses (pas d'ELO en base)
+		var headers : Array[String] = ["#", U.lt("player_col"), "LOGIN", U.lt("wins"), U.lt("losses")]
 		for i in range(headers.size()):
-			scr.add_child(U.lbl(headers[i], Vector2(cols_x[i], 148), 13, U.C_PURPLE))
+			scr.add_child(U.lbl(headers[i], Vector2(_lb_cols_x[i], 148), 13, U.C_PURPLE))
 		var div := ColorRect.new()
 		div.color    = Color(U.C_PURPLE.r, U.C_PURPLE.g, U.C_PURPLE.b, 0.5)
 		div.position = Vector2(55, 168); div.size = Vector2(U.WIN_W - 110, 1)
 		scr.add_child(div)
-		var rows : Array = [
-			["1","Champion","1850","42","8"],
-			["2","Stratège","1720","35","12"],
-			["3","Conquérant","1680","30","10"],
+		# Zone scrollable des lignes (entre le séparateur y=168 et le bouton Back y≈658)
+		var sc := ScrollContainer.new()
+		sc.position               = Vector2(55, 184)
+		sc.custom_minimum_size    = Vector2(U.WIN_W - 110, 466)
+		sc.size                   = Vector2(U.WIN_W - 110, 466)
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scr.add_child(sc)
+		_lb_rows = VBoxContainer.new()
+		_lb_rows.add_theme_constant_override("separation", 0)
+		_lb_rows.custom_minimum_size = Vector2(U.WIN_W - 110, 0)
+		sc.add_child(_lb_rows)
+		# Ligne d'état provisoire
+		_lb_status = U.lbl("Chargement…", Vector2(55, 200), 14, U.C_GOLD)
+		scr.add_child(_lb_status)
+		# Branche la réception + lance la requête serveur
+		if not Matchmaker.leaderboard_received.is_connected(_on_leaderboard_received):
+			Matchmaker.leaderboard_received.connect(_on_leaderboard_received, CONNECT_ONE_SHOT)
+		Matchmaker.get_leaderboard()
+		# Fallback hors-ligne : si rien dans 4 s, on affiche au moins le joueur connecté
+		var timer := _parent.get_tree().create_timer(4.0)
+		timer.timeout.connect(_on_leaderboard_timeout, CONNECT_ONE_SHOT))
+
+
+func _on_leaderboard_received(players: Array) -> void:
+	if _lb_filled or not is_instance_valid(_lb_scr):
+		return
+	_lb_filled = true
+	if players.is_empty():
+		if _lb_status: _lb_status.text = "Aucun joueur classé pour l'instant."
+		return
+	if _lb_status: _lb_status.queue_free()
+	_fill_leaderboard_rows(players)
+
+
+func _on_leaderboard_timeout() -> void:
+	# Pas de réponse serveur → on ne plante pas : on montre au moins le joueur connecté.
+	if _lb_filled or not is_instance_valid(_lb_scr):
+		return
+	_lb_filled = true
+	if _lb_status:
+		_lb_status.text = "Classement indisponible (hors-ligne)"
+		_lb_status.add_theme_color_override("font_color", U.C_PINK)
+	var me : Array = [{
+		"pseudo":   GameConfig.steam_name if GameConfig.steam_name != "" else "Agent",
+		"username": GameConfig.username,
+		"wins":     GameConfig.wins,
+		"losses":   GameConfig.losses,
+	}]
+	_fill_leaderboard_rows(me)
+
+
+# Remplit les lignes du tableau (données serveur ou fallback) dans le ScrollContainer.
+func _fill_leaderboard_rows(players: Array) -> void:
+	if not is_instance_valid(_lb_rows):
+		return
+	for r in range(players.size()):
+		var p : Dictionary = players[r]
+		var cells : Array[String] = [
+			str(r + 1),
+			str(p.get("pseudo", "")),
+			str(p.get("username", "")),
+			str(int(p.get("wins", 0))),     # int → fini les 1.0 / 0.0
+			str(int(p.get("losses", 0))),
 		]
-		for r in range(rows.size()):
-			for c in range(rows[r].size()):
-				scr.add_child(U.lbl(rows[r][c], Vector2(cols_x[c], 184 + r * 44), 14,
-					U.C_GOLD if r == 0 else Color(0.88, 0.85, 0.92))))
+		var row := Control.new()
+		row.custom_minimum_size = Vector2(U.WIN_W - 110, 44)
+		for c in range(cells.size()):
+			# x relatif à l'origine du ScrollContainer (x=55)
+			row.add_child(U.lbl(cells[c], Vector2(_lb_cols_x[c] - 55, 8), 14,
+				U.C_GOLD if r == 0 else Color(0.88, 0.85, 0.92)))
+		_lb_rows.add_child(row)
 
 
 func _open_settings() -> void:

@@ -140,12 +140,12 @@ func _on_login_success(token: String, pseudo: String, username: String, wins: in
 	GameConfig.token = token; GameConfig.username = username
 	GameConfig.steam_name = pseudo; GameConfig.wins = wins; GameConfig.losses = losses
 	_save_token(token)
-	SceneLoader.goto("res://scenes/online/OnlineMenu.tscn")
+	SceneLoader.goto("res://scenes/Main.tscn")
 
 func _on_token_valid(pseudo: String, username: String, wins: int, losses: int) -> void:
 	GameConfig.token = _load_token(); GameConfig.username = username
 	GameConfig.steam_name = pseudo; GameConfig.wins = wins; GameConfig.losses = losses
-	SceneLoader.goto("res://scenes/online/OnlineMenu.tscn")
+	SceneLoader.goto("res://scenes/Main.tscn")
 
 func _on_auth_error(message: String) -> void:
 	_status.text = "Erreur : %s" % message; _btn_login.disabled = false
