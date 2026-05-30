@@ -167,9 +167,7 @@ func _join_room(room_name: String, map: String, format: String,
 	GameConfig.is_host   = false
 	GameConfig.server_ip = ip     # IP ENet de l'hôte (depuis le Matchmaker)
 
-	if multiplayer.multiplayer_peer != null:
-		multiplayer.multiplayer_peer.close()
-		multiplayer.multiplayer_peer = null
+	NetworkManager.reset_connection()
 
 	# Reconnexion des signaux one-shot pour cette tentative
 	if not NetworkManager.connected_to_server.is_connected(_on_connected):

@@ -55,11 +55,10 @@ func _on_create_pressed() -> void:
 	_btn_create.disabled = true
 	_status.text         = "Enregistrement de la room…"
 
-	# Nettoyer toute connexion résiduelle
-	if multiplayer.multiplayer_peer != null:
-		multiplayer.multiplayer_peer.close()
-		multiplayer.multiplayer_peer = null
-		await get_tree().create_timer(0.15).timeout
+	# Nettoyer toute connexion résiduelle via NetworkManager pour garder
+	# _peer et multiplayer.multiplayer_peer synchronisés (évite le désync).
+	NetworkManager.reset_connection()
+	await get_tree().create_timer(0.15).timeout
 
 	# Étape 1 : enregistrer sur le matchmaker (rapide)
 	# La connexion au serveur de jeu se fait en salle d'attente

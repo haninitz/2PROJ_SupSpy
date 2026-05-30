@@ -169,6 +169,10 @@ func _on_room_full(_rid: String) -> void:
 	_status.text = "Room pleine !"
 
 func _refresh_slots() -> void:
+	# Autorité hôte : le format de la room publiée fait foi. Évite qu'un
+	# GameConfig.format local périmé (ex. "2v2" résiduel) n'affiche trop de slots.
+	if GameConfig.is_host and RoomManager.rooms.has(GameConfig.room_name):
+		GameConfig.format = RoomManager.rooms[GameConfig.room_name].get("format", GameConfig.format)
 	for c in _slots_a.get_children(): c.queue_free()
 	for c in _slots_b.get_children(): c.queue_free()
 
