@@ -111,6 +111,38 @@ region = Rect2(336, 336, 48, 48)
 atlas = ExtResource("2_hndrp")
 region = Rect2(0, 0, 48, 48)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_hndrp"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(0, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_72del"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(48, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6ayhl"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(96, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d442v"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(144, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5q2xs"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(192, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kkuqb"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(240, 144, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3h6e5"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(288, 144, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ukffj"]
+atlas = ExtResource("2_hndrp")
+region = Rect2(336, 144, 48, 48)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_u656m"]
 atlas = ExtResource("2_hndrp")
 region = Rect2(336, 96, 48, 48)
@@ -283,7 +315,31 @@ animations = [{
 "name": &"idle",
 "speed": 5.0
 }, {
-"frames": [],
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hndrp")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_72del")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6ayhl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d442v")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5q2xs")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_kkuqb")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3h6e5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ukffj")
+}],
 "loop": true,
 "name": &"walk_down",
 "speed": 5.0
@@ -362,7 +418,7 @@ script = ExtResource("1_5ty0q")
 
 [node name="Sprite2D" type="AnimatedSprite2D" parent="." unique_id=243494726]
 sprite_frames = SubResource("SpriteFrames_72del")
-animation = &"attack_left"
+animation = &"walk_down"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2063705257]
 shape = SubResource("CapsuleShape2D_wr6b2")
