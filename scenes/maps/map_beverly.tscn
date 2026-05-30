@@ -1,3 +1,6 @@
 [gd_scene format=3 uid="uid://bg1bl6567xbof"]
 
+[ext_resource type="Script" uid="uid://k2jkbht637pt" path="res://scripts/map_beverly_tilemap.gd" id="1_38crh"]
+
 [node name="MapBeverly" type="Node2D" unique_id=923941915]
+script = ExtResource("1_38crh")
