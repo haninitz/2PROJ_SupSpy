@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://jt1u8j00716m"]
+
+[ext_resource type="Script" uid="uid://cws7818xf0406" path="res://scripts/online/choix_mode.gd" id="1_pg8hw"]
+
+[node name="ChoixMode" type="Control" unique_id=2007617906]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_pg8hw")
