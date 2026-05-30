@@ -7,7 +7,10 @@ const C_WHITE := Color(1.00, 1.00, 1.00)
 
 var _input_room : LineEdit; var _btn_create : Button; var _status : Label
 
-func _ready() -> void: _build()
+func _ready() -> void:
+	_build()
+	Matchmaker.room_created.connect(_on_room_registered, CONNECT_ONE_SHOT)
+	Matchmaker.matchmaker_error.connect(_on_matchmaker_error)
 
 func _build() -> void:
 	var bg := ColorRect.new(); bg.color = C_BG; bg.size = Vector2(1152, 720); add_child(bg)
@@ -44,31 +47,52 @@ func _on_create_pressed() -> void:
 	var room_name := _input_room.text.strip_edges()
 	if room_name.is_empty(): _status.text = "Entre un nom de mission !"; return
 	if room_name.length() < 3: _status.text = "Minimum 3 caractères !"; return
-	GameConfig.room_name = room_name; GameConfig.is_host = true
-	GameConfig.mode = "multi"  # toujours multi pour une room en ligne
-	_btn_create.disabled = true; _status.text = "Démarrage du serveur…"
+	if room_name.length() > 20: _status.text = "Nom trop long (20 max) !"; return
+
+	GameConfig.room_name = room_name
+	GameConfig.is_host   = true
+	GameConfig.mode      = "multi"
+	_btn_create.disabled = true
+	_status.text         = "Enregistrement de la room…"
+
+	# Nettoyer toute connexion résiduelle
 	if multiplayer.multiplayer_peer != null:
-		multiplayer.multiplayer_peer.close(); multiplayer.multiplayer_peer = null
+		multiplayer.multiplayer_peer.close()
+		multiplayer.multiplayer_peer = null
 		await get_tree().create_timer(0.15).timeout
-	NetworkManager.create_server()
-	# Enregistrer la room localement IMMÉDIATEMENT — pas besoin d'attendre le Matchmaker
-	RoomManager.join_room_local(GameConfig.room_name, GameConfig.mode,
-		GameConfig.format, GameConfig.diff, GameConfig.map, GameConfig.steam_name)
-	# Notifier le Matchmaker en parallèle (best-effort, non bloquant)
-	# Utiliser l'IP locale pour que les joueurs du même réseau puissent se connecter
-	var local_ip : String = "127.0.0.1"
-	var addrs : Array = IP.get_local_addresses()
-	for addr in addrs:
+
+	# Étape 1 : enregistrer sur le matchmaker (rapide)
+	# La connexion au serveur de jeu se fait en salle d'attente
+	var local_ip := "127.0.0.1"
+	for addr in IP.get_local_addresses():
 		if addr.begins_with("192.168.") or addr.begins_with("10.") or addr.begins_with("172."):
-			local_ip = addr
-			break
-	Matchmaker.create_room(room_name, local_ip,
-		GameConfig.format, GameConfig.map, GameConfig.get_max_players())
-	_status.text = "Mission créée !"
-	SceneLoader.goto("res://scenes/online/SalleAttente.tscn")
+			local_ip = addr; break
+
+	Matchmaker.create_room(
+		room_name, local_ip,
+		GameConfig.format, GameConfig.map,
+		GameConfig.get_max_players())
+
+	# Timeout 12s si le matchmaker ne répond pas
+	await get_tree().create_timer(12.0).timeout
+	if is_inside_tree() and _status.text == "Enregistrement de la room…":
+		_status.text         = "Timeout — le serveur ne répond pas, réessaie."
+		_btn_create.disabled = false
 
 func _on_room_registered(_room_name: String) -> void:
-	pass  # Plus utilisé — gardé pour compatibilité signal
+	_status.text = "Room créée ! Connexion en cours…"
+	# NB : on n'enregistre PAS l'hôte ici. my_peer_id vaut encore 0 avant
+	# create_server() ; l'enregistrer maintenant créerait un slot fantôme
+	# (Joueur 0) en plus du vrai (Joueur 1). L'enregistrement se fait
+	# uniquement en salle d'attente, une fois my_peer_id fixé à 1.
+	# Lancer la connexion WebSocket en arrière-plan (fixe my_peer_id = 1)
+	NetworkManager.create_server()
+	# Aller en salle d'attente immédiatement sans attendre la connexion
+	SceneLoader.goto("res://scenes/online/SalleAttente.tscn")
+
+func _on_matchmaker_error() -> void:
+	_status.text         = "Erreur réseau — réessaie."
+	_btn_create.disabled = false
 
 func _flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new(); s.bg_color = bg; s.border_color = border
