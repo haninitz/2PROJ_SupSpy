@@ -24,7 +24,7 @@ var _parent     : Node
 var U           : Node
 
 # ── État sélection ────────────────────────────────────────────────────────────
-var _ai_difficulty  : String = "medium"
+var _ai_difficulty  : String = "med"
 var _player_team_idx : int   = 0   # index team joueur
 var video_player : VideoStreamPlayer = null
 
@@ -335,7 +335,7 @@ func _build_ai_screen() -> void:
 
 	var diff_data : Array = [
 		{"t": "Facile",   "col": U.C_GREEN, "k": "easy"},
-		{"t": "Medium",   "col": U.C_GOLD,  "k": "medium"},
+		{"t": "Moyen",    "col": U.C_GOLD,  "k": "med"},
 		{"t": "Difficile","col": U.C_PINK,  "k": "hard"},
 	]
 	for i in range(3):
@@ -370,6 +370,10 @@ func _on_ai_next() -> void:
 	# L'IA prend la team suivante (différente du joueur)
 	var ai_idx : int = (_player_team_idx + 1) % teams.size()
 	var ai_name : String = teams[ai_idx]["name"]
+	GameConfig.selected_team_ids.clear()
+	GameConfig.selected_team_ids.append(_player_team_idx)
+	GameConfig.selected_team_ids.append(ai_idx)
+	GameConfig.diff = _ai_difficulty
 	mode_selected.emit(true, _ai_difficulty)
 	squads_selected.emit(player_name, ai_name)
 	UIUtils.goto(_ai_screen, map_screen)

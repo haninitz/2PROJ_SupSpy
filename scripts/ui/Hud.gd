@@ -440,6 +440,7 @@ func _build_notif_panel() -> void:
 func show_hud() -> void:
 	if _lb_bg:
 		_lb_bg.visible = true
+	refresh_leaderboard()
 	if _minimap:
 		_minimap.show_minimap()
 	if event_log:
@@ -464,7 +465,67 @@ func _refresh_stats() -> void:
 
 
 func refresh_leaderboard() -> void:
-	pass
+	if not leaderboard_container:
+		return
+	var gm := get_node_or_null("/root/GameManager")
+	if not gm:
+		return
+
+	for child in leaderboard_container.get_children():
+		child.queue_free()
+
+	var sorted : Array = gm.players.duplicate()
+	sorted.sort_custom(func(a, b): return a.get_camp_count() > b.get_camp_count())
+
+	for player in sorted:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+
+		# Couleur d'affichage : on s'assure qu'elle soit visible sur fond sombre
+		var dc : Color = player.color
+		if dc.v < 0.45:
+			dc = Color.from_hsv(dc.h, clamp(dc.s, 0.3, 1.0), 0.8)
+
+		# Bande de couleur de l'équipe
+		var bar := ColorRect.new()
+		bar.color = dc
+		bar.custom_minimum_size = Vector2(5, 32)
+
+		# Infos équipe
+		var vbox := VBoxContainer.new()
+		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.add_theme_constant_override("separation", 1)
+
+		var name_lbl := Label.new()
+		if player.is_ai:
+			var _diff_names := ["IA", "IA — Facile", "IA — Moyen", "IA — Difficile"]
+			name_lbl.text = _diff_names[player.ai_level] if player.ai_level < _diff_names.size() else "IA"
+		else:
+			name_lbl.text = player.player_name
+		name_lbl.add_theme_font_size_override("font_size", 12)
+		name_lbl.add_theme_color_override("font_color", dc)
+		name_lbl.clip_text = true
+
+		var stats_lbl := Label.new()
+		var defeated : bool = player.get_camp_count() == 0
+		if defeated:
+			stats_lbl.text = "éliminé"
+			stats_lbl.add_theme_color_override("font_color", Color(0.6, 0.3, 0.3))
+		else:
+			stats_lbl.text = "%d camps  +%dG" % [player.get_camp_count(), player.get_income()]
+			stats_lbl.add_theme_color_override("font_color", Color(dc.r, dc.g, dc.b, 0.75))
+		stats_lbl.add_theme_font_size_override("font_size", 10)
+
+		vbox.add_child(name_lbl)
+		vbox.add_child(stats_lbl)
+
+		row.add_child(bar)
+		row.add_child(vbox)
+
+		if player.get_camp_count() == 0:
+			row.modulate.a = 0.5
+
+		leaderboard_container.add_child(row)
 
 
 func show_recruit(camp) -> void:

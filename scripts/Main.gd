@@ -754,7 +754,14 @@ func _rpc_show_end_game(winner: int) -> void:
 		return
 	_game_over = true
 	var wp = GameManager.find_player_by_id(winner)
-	var wn = wp.player_name if wp else "Joueur %d" % winner
+	var wn : String
+	if wp == null:
+		wn = "Joueur %d" % winner
+	elif wp.is_ai:
+		var _dn := ["IA", "IA — Facile", "IA — Moyen", "IA — Difficile"]
+		wn = _dn[wp.ai_level] if wp.ai_level < _dn.size() else "IA"
+	else:
+		wn = wp.player_name
 	_ui.show_victory(wn, 0, {})
 
 
@@ -817,7 +824,14 @@ func _end_game(winner: int) -> void:
 	}
 
 	var winner_player = GameManager.find_player_by_id(winner)
-	var winner_name: String = winner_player.player_name if winner_player else "Joueur %d" % winner
+	var winner_name: String
+	if winner_player == null:
+		winner_name = "Joueur %d" % winner
+	elif winner_player.is_ai:
+		var _dn := ["IA", "IA — Facile", "IA — Moyen", "IA — Difficile"]
+		winner_name = _dn[winner_player.ai_level] if winner_player.ai_level < _dn.size() else "IA"
+	else:
+		winner_name = winner_player.player_name
 
 	# Le 2e argument doit être un int.
 	# On met 0 car le jeu n'est plus en tour par tour.
