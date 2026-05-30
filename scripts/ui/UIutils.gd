@@ -55,7 +55,7 @@ func btn(text: String, pos: Vector2, sz: Vector2, fsize: int) -> Button:
 
 
 func back_btn(action: Callable) -> Button:
-	var b := btn("← Back", Vector2(28, 658), Vector2(140, 38), 14)
+	var b := btn(lt("back"), Vector2(28, 658), Vector2(140, 38), 14)
 	b.add_theme_stylebox_override("normal",
 		flat(Color(0.10, 0.08, 0.18), Color(0.45, 0.38, 0.60), 1, 8))
 	b.add_theme_color_override("font_color", Color(0.78, 0.72, 0.90))

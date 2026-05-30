@@ -7,6 +7,7 @@ extends CanvasLayer
 var U : Node
 
 signal recruit_pressed(unit_type: String)
+signal pause_requested
 
 const MAX_LOG : int = 6
 
@@ -19,11 +20,13 @@ var msg_label    : Label
 var unit_label   : Label
 
 var leaderboard_container : VBoxContainer
-var _lb_bg   : Panel
-var _minimap : Node2D
-var recruit_bar   : Control
-var camp_label    : Label
-var recruit_btns  : Array = []
+var _lb_bg      : Panel
+var _minimap    : Node2D
+var recruit_bar : Control
+var camp_label  : Label
+var recruit_btns : Array = []
+var _pause_btn  : Button = null
+var _lb_title   : Label  = null
 
 # Panneau stats unité — reconstruit avec style
 var selection_panel  : Panel = null
@@ -106,6 +109,21 @@ func _build_stats_bar() -> void:
 	camps_label.visible  = false
 	msg_label.visible    = false
 
+	# Bouton pause — coin supérieur gauche
+	_pause_btn          = Button.new()
+	_pause_btn.text     = "  ⏸  "
+	_pause_btn.position = Vector2(10, 10)
+	_pause_btn.size     = Vector2(52, 32)
+	_pause_btn.add_theme_font_size_override("font_size", 16)
+	_pause_btn.add_theme_stylebox_override("normal",
+		U.flat(Color(0.08, 0.03, 0.16, 0.85), U.C_PINK, 1, 8))
+	_pause_btn.add_theme_stylebox_override("hover",
+		U.flat(Color(0.20, 0.06, 0.30, 0.95), U.C_PINK, 2, 8))
+	_pause_btn.add_theme_color_override("font_color", U.C_PINK)
+	_pause_btn.visible = false
+	_pause_btn.pressed.connect(func(): pause_requested.emit())
+	add_child(_pause_btn)
+
 
 func _build_leaderboard() -> void:
 	_lb_bg = Panel.new()
@@ -121,8 +139,9 @@ func _build_leaderboard() -> void:
 	lb_bg.add_theme_stylebox_override("panel", lbs)
 	add_child(lb_bg)
 
-	var lt : Label = Label.new()
-	lt.text     = "— Players —"
+	_lb_title = Label.new()
+	var lt : Label = _lb_title
+	lt.text     = U.lt("players_title")
 	lt.position = Vector2(0, 5)
 	lt.size     = Vector2(222, 22)
 	lt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -440,6 +459,8 @@ func _build_notif_panel() -> void:
 func show_hud() -> void:
 	if _lb_bg:
 		_lb_bg.visible = true
+	if _pause_btn:
+		_pause_btn.visible = true
 	refresh_leaderboard()
 	if _minimap:
 		_minimap.show_minimap()
@@ -458,6 +479,8 @@ func show_hud() -> void:
 func hide_hud() -> void:
 	if _lb_bg:
 		_lb_bg.visible = false
+	if _pause_btn:
+		_pause_btn.visible = false
 
 
 func _refresh_stats() -> void:
@@ -471,6 +494,8 @@ func refresh_leaderboard() -> void:
 	if not gm:
 		return
 
+	if _lb_title:
+		_lb_title.text = U.lt("players_title")
 	for child in leaderboard_container.get_children():
 		child.queue_free()
 
@@ -498,7 +523,10 @@ func refresh_leaderboard() -> void:
 
 		var name_lbl := Label.new()
 		if player.is_ai:
-			var _diff_names := ["IA", "IA — Facile", "IA — Moyen", "IA — Difficile"]
+			var _diff_names : Array = ["IA",
+				"IA — " + U.lt("diff_easy"),
+				"IA — " + U.lt("diff_med"),
+				"IA — " + U.lt("diff_hard")]
 			name_lbl.text = _diff_names[player.ai_level] if player.ai_level < _diff_names.size() else "IA"
 		else:
 			name_lbl.text = player.player_name
@@ -509,7 +537,7 @@ func refresh_leaderboard() -> void:
 		var stats_lbl := Label.new()
 		var defeated : bool = player.get_camp_count() == 0
 		if defeated:
-			stats_lbl.text = "éliminé"
+			stats_lbl.text = U.lt("eliminated")
 			stats_lbl.add_theme_color_override("font_color", Color(0.6, 0.3, 0.3))
 		else:
 			stats_lbl.text = "%d camps  +%dG" % [player.get_camp_count(), player.get_income()]
@@ -546,7 +574,7 @@ func show_recruit(camp) -> void:
 
 	var camp_n : String = camp.get("camp_name") if "camp_name" in camp else camp.get("name", "?")
 	if q_parts.is_empty():
-		camp_label.text = "%s  —  file vide" % camp_n
+		camp_label.text = "%s  —  %s" % [camp_n, U.lt("queue_empty_lbl")]
 	else:
 		camp_label.text = "%s  —  ▶ %s" % [camp_n, "  →  ".join(q_parts)]
 
@@ -579,7 +607,7 @@ func update_selection_panel(selected_units: Array) -> void:
 	selection_panel.visible = true
 
 	# En-tête
-	unit_count_label.text = "✦  %d unité(s) sélectionnée(s)" % selected_units.size()
+	unit_count_label.text = U.lt("units_selected") % selected_units.size()
 
 	# Bouton spell + cooldown
 	var has_spell : bool = false
@@ -644,7 +672,7 @@ func update_selection_panel(selected_units: Array) -> void:
 				hp_val_node.text = "%d / %d" % [int(hp_val), int(max_hp)]
 
 			# Ligne stats
-			var rng_str : String = "mêlée" if rng <= 0.0 else "%.0f px" % rng
+			var rng_str : String = U.lt("stat_melee") if rng <= 0.0 else "%.0f px" % rng
 			var type_name : String = "?"
 			# Récupère le nom du type depuis UnitDefs si dispo
 			var type_key : String = Unit.UnitType.keys()[utype_i] \

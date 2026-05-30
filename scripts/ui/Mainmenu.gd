@@ -243,14 +243,14 @@ func _build_play_screen() -> void:
 	ai_block.add_child(ai_lbl)
 
 	var ai_desc := Label.new()
-	ai_desc.text = "Affronte une IA · Choisis ton équipe et la difficulté"
+	ai_desc.text = U.lt("ai_desc")
 	ai_desc.position = Vector2(20, 56)
 	ai_desc.size = Vector2(450, 28)
 	ai_desc.add_theme_font_size_override("font_size", 13)
 	ai_desc.add_theme_color_override("font_color", Color(0.80, 0.60, 0.85))
 	ai_block.add_child(ai_desc)
 
-	var ai_btn : Button = U.btn("→  LANCER", Vector2(20, 130), Vector2(450, 52), 17)
+	var ai_btn : Button = U.btn(U.lt("ai_launch"), Vector2(20, 130), Vector2(450, 52), 17)
 	ai_btn.add_theme_stylebox_override("normal", U.flat(Color(0.28,0.05,0.18), U.C_PINK, 2, 8))
 	ai_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.42,0.10,0.28), U.C_PINK, 2, 8))
 	ai_btn.add_theme_color_override("font_color", U.C_WHITE)
@@ -267,21 +267,21 @@ func _build_play_screen() -> void:
 	_play_screen.add_child(mp_block)
 
 	var mp_lbl := Label.new()
-	mp_lbl.text = "🌐  MULTIJOUEUR"
+	mp_lbl.text = "🌐  " + U.lt("multiplayer")
 	mp_lbl.position = Vector2(20, 18)
 	mp_lbl.add_theme_font_size_override("font_size", 22)
 	mp_lbl.add_theme_color_override("font_color", U.C_CYAN)
 	mp_block.add_child(mp_lbl)
 
 	var mp_desc := Label.new()
-	mp_desc.text = "Joue en ligne · Crée ou rejoins une mission"
+	mp_desc.text = U.lt("mp_desc")
 	mp_desc.position = Vector2(20, 56)
 	mp_desc.size = Vector2(450, 28)
 	mp_desc.add_theme_font_size_override("font_size", 13)
 	mp_desc.add_theme_color_override("font_color", Color(0.60, 0.80, 0.90))
 	mp_block.add_child(mp_desc)
 
-	var mp_btn : Button = U.btn("→  EN MISSION", Vector2(20, 130), Vector2(450, 52), 17)
+	var mp_btn : Button = U.btn(U.lt("mp_launch"), Vector2(20, 130), Vector2(450, 52), 17)
 	mp_btn.add_theme_stylebox_override("normal", U.flat(Color(0.05,0.18,0.28), U.C_CYAN, 2, 8))
 	mp_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.10,0.28,0.42), U.C_CYAN, 2, 8))
 	mp_btn.add_theme_color_override("font_color", U.C_WHITE)
@@ -306,7 +306,7 @@ func _build_ai_screen() -> void:
 	# Indicateur team sélectionnée
 	var sel_label := Label.new()
 	sel_label.name = "AISelLabel"
-	sel_label.text = "Ton équipe : " + teams[0]["name"]
+	sel_label.text = U.lt("your_team") + teams[0]["name"]
 	sel_label.position = Vector2(55, 124)
 	sel_label.size = Vector2(U.WIN_W - 110, 22)
 	sel_label.add_theme_font_size_override("font_size", 13)
@@ -324,37 +324,37 @@ func _build_ai_screen() -> void:
 	_ai_screen.add_child(div)
 
 	# Niveau IA
-	_ai_screen.add_child(U.lbl("Niveau de l'IA :", Vector2(55, 358), 13, U.C_CYAN))
+	_ai_screen.add_child(U.lbl(U.lt("ai_level_label"), Vector2(55, 358), 13, U.C_CYAN))
 	var diff_label := Label.new()
 	diff_label.name = "DiffLabel"
-	diff_label.text = "Medium"
+	diff_label.text = U.lt("diff_med")
 	diff_label.position = Vector2(280, 358)
 	diff_label.add_theme_font_size_override("font_size", 13)
 	diff_label.add_theme_color_override("font_color", U.C_GOLD)
 	_ai_screen.add_child(diff_label)
 
 	var diff_data : Array = [
-		{"t": "Facile",   "col": U.C_GREEN, "k": "easy"},
-		{"t": "Moyen",    "col": U.C_GOLD,  "k": "med"},
-		{"t": "Difficile","col": U.C_PINK,  "k": "hard"},
+		{"lk": "diff_easy", "col": U.C_GREEN, "k": "easy"},
+		{"lk": "diff_med",  "col": U.C_GOLD,  "k": "med"},
+		{"lk": "diff_hard", "col": U.C_PINK,  "k": "hard"},
 	]
 	for i in range(3):
 		var dd : Dictionary = diff_data[i]
-		var db : Button = U.btn(dd["t"], Vector2(55 + i * 136, 382), Vector2(126, 40), 14)
+		var db : Button = U.btn(U.lt(dd["lk"]), Vector2(55 + i * 136, 382), Vector2(126, 40), 14)
 		db.add_theme_stylebox_override("normal",
 			U.flat(Color(dd["col"].r*0.18, dd["col"].g*0.18, dd["col"].b*0.18), dd["col"], 2, 6))
 		db.add_theme_stylebox_override("hover",
 			U.flat(Color(dd["col"].r*0.32, dd["col"].g*0.32, dd["col"].b*0.32), dd["col"], 2, 6))
 		db.add_theme_color_override("font_color", U.C_WHITE)
 		var dk : String = dd["k"]
-		var dt : String = dd["t"]
+		var dlk : String = dd["lk"]
 		db.pressed.connect(func():
 			_ai_difficulty = dk
-			diff_label.text = dt)
+			diff_label.text = U.lt(dlk))
 		_ai_screen.add_child(db)
 
 	# Bouton Suivant → map
-	var next_btn : Button = U.btn("Suivant  →  Choisir la map",
+	var next_btn : Button = U.btn(U.lt("next_map"),
 		Vector2(U.WIN_W - 380, 638), Vector2(320, 50), 16)
 	next_btn.add_theme_stylebox_override("normal", U.flat(Color(0.28,0.05,0.18), U.C_PINK, 2, 10))
 	next_btn.add_theme_stylebox_override("hover",  U.flat(Color(0.42,0.10,0.28), U.C_PINK, 2, 10))
@@ -506,7 +506,7 @@ func _build_team_grid(parent: Panel, teams: Array, origin: Vector2,
 		tb.pressed.connect(func():
 			_player_team_idx = ti
 			if ctx == "ai":
-				sel_label.text = "Ton équipe : " + tn
+				sel_label.text = U.lt("your_team") + tn
 			else:
 				sel_label.text = "Ton agent : " + tn)
 		parent.add_child(tb)
@@ -521,9 +521,9 @@ func _build_map_screen() -> void:
 	U.add_header(map_screen, U.lt("map_title"), U.C_GOLD)
 
 	var map_data : Array = [
-		{"name": "Beverly Hills  (Clover)", "desc": "Urbain · Rivière · Pont",     "col": U.C_PINK},
-		{"name": "Jungle Techno  (Sam)",    "desc": "Forêt dense · Hauts revenus", "col": U.C_GREEN},
-		{"name": "Île Tropicale  (Alex)",   "desc": "Île · Océan · Ports",         "col": U.C_CYAN},
+		{"name": "Beverly Hills  (Clover)", "desc": U.lt("map1_desc"), "col": U.C_PINK},
+		{"name": "Jungle Techno  (Sam)",    "desc": U.lt("map2_desc"), "col": U.C_GREEN},
+		{"name": "Île Tropicale  (Alex)",   "desc": U.lt("map3_desc"), "col": U.C_CYAN},
 	]
 
 	for i in range(map_data.size()):
@@ -551,7 +551,20 @@ func _build_map_screen() -> void:
 			map_selected.emit(idx))
 		card.add_child(play)
 
+	# Bouton ← retour vers l'écran précédent (AI screen)
 	map_screen.add_child(U.back_btn(func(): UIUtils.goto(map_screen, _ai_screen)))
+
+	# Bouton 🏠 retour direct au menu principal
+	var home_btn : Button = U.btn("🏠  " + U.lt("main_menu"), Vector2(U.WIN_W - 210, 658), Vector2(180, 38), 14)
+	home_btn.add_theme_stylebox_override("normal",
+		U.flat(Color(0.10, 0.04, 0.18), U.C_PINK, 1, 8))
+	home_btn.add_theme_stylebox_override("hover",
+		U.flat(Color(0.22, 0.08, 0.28), U.C_PINK, 2, 8))
+	home_btn.add_theme_color_override("font_color", Color(0.90, 0.70, 0.90))
+	home_btn.pressed.connect(func():
+		map_screen.visible = false
+		main_menu.visible  = true)
+	map_screen.add_child(home_btn)
 
 
 func hide_map_screen() -> void:

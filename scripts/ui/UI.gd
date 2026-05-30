@@ -71,6 +71,7 @@ func _ready() -> void:
 	_menu.mode_selected.connect(func(a : bool, d : String): mode_selected.emit(a, d))
 	_menu.squads_selected.connect(func(a : String, b : String): squads_selected.emit(a, b))
 	_hud.recruit_pressed.connect(func(t : String): recruit_pressed.emit(t))
+	_hud.pause_requested.connect(func(): _pause.toggle())
 	_victory.turn_confirmed.connect(func(): turn_confirmed.emit())
 
 	var gm : Node = get_node_or_null("/root/GameManager")
