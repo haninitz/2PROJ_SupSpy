@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://dfcyr3h065irv" path="res://scripts/units/Destroyer.gd" id="1_q0tr7"]
 [ext_resource type="Texture2D" uid="uid://c2d63gwt18dks" path="res://assets/sprites/Boat.png" id="2_gibqp"]
 
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_gibqp"]
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_713mi"]
 radius = 100.0
 
@@ -25,6 +27,7 @@ animations = [{
 script = ExtResource("1_q0tr7")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=51602440]
+shape = SubResource("CapsuleShape2D_gibqp")
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="." unique_id=1537319574]
 

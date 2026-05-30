@@ -6,6 +6,12 @@
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_utu1l"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_yfb7y"]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_5vo1j"]
 radius = 50.0
@@ -139,6 +145,7 @@ shape = SubResource("CapsuleShape2D_utu1l")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2049926268]
 sprite_frames = SubResource("SpriteFrames_yfb7y")
+animation = &"idle"
 
 [node name="AttackTimer" type="Timer" parent="." unique_id=774119781]
 wait_time = 1.5
