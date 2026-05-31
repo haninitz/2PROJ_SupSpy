@@ -42,14 +42,14 @@ func _ready() -> void:
 		# create_server(). L'enregistrement se fait dans _on_host_ws_ready(),
 		# une fois my_peer_id définitivement fixé à 1.
 		if multiplayer.multiplayer_peer == null:
-			_status.text = "Connexion au serveur de jeu…"
+			_status.text = _lt("lobby_connecting_srv")
 			NetworkManager.connected_to_server.connect(_on_host_ws_ready, CONNECT_ONE_SHOT)
 			NetworkManager.connection_failed.connect(_on_host_ws_fail,    CONNECT_ONE_SHOT)
 			NetworkManager.create_server()
 		else:
 			_on_host_ws_ready()
 	else:
-		_status.text = "Connexion à la mission…"
+		_status.text = _lt("lobby_connecting_miss")
 		NetworkManager.connection_failed.connect(_on_connect_failed,    CONNECT_ONE_SHOT)
 		NetworkManager.connected_to_server.connect(_on_client_ws_ready, CONNECT_ONE_SHOT)
 
@@ -73,7 +73,7 @@ func _register_host_once() -> void:
 
 # ── Callbacks hôte ───────────────────────────────────────────────────────────
 func _on_host_ws_ready() -> void:
-	_status.text = "En attente des agentes… 1/%d" % GameConfig.get_max_players()
+	_status.text = _lt("lobby_waiting_agents") % GameConfig.get_max_players()
 	# Récupérer l'IP locale pour le Matchmaker
 	var local_ip := _get_local_ip()
 	# 1) Déclarer la room sur le matchmaker (action "create" en premier dans la file).
@@ -88,26 +88,26 @@ func _on_host_ws_ready() -> void:
 	_register_host_once()
 
 func _on_host_ws_fail() -> void:
-	_status.text = "Connexion serveur échouée — les clients ne pourront pas rejoindre."
+	_status.text = _lt("lobby_server_fail")
 
 # ── Callbacks client ─────────────────────────────────────────────────────────
 func _on_client_ws_ready() -> void:
 	GameConfig.my_peer_id = multiplayer.get_unique_id()
-	_status.text = "Connecté — en attente de l'hôte…"
+	_status.text = _lt("lobby_waiting_host_con")
 	# L'hôte n'est plus peer 1 (les deux sont clients du relay, IDs ≥ 2). Un RPC
 	# ciblé rpc_id(1) serait rejeté côté hôte (unique_id ≠ 1). On diffuse donc en
 	# broadcast : en 1v1, .rpc() atteint l'unique autre joueur (l'hôte).
 	_send_join_request()
 
 func _send_join_request() -> void:
-	_status.text = "Demande d'accès envoyée…"
+	_status.text = _lt("lobby_join_sent")
 	RoomManager.request_join_room.rpc(
 		GameConfig.room_name, GameConfig.mode,
 		GameConfig.format,    GameConfig.diff,
 		GameConfig.map,       GameConfig.steam_name)
 
 func _on_connect_failed() -> void:
-	_status.text = "Connexion au serveur échouée. Réessaie."
+	_status.text = _lt("lobby_conn_failed")
 
 # Avancement de connexion : n'écraser le statut que tant qu'on attend encore
 # la connexion (hôte avant enregistrement, ou client avant le join).
@@ -127,7 +127,7 @@ func _on_player_disconnected(_peer_id: int) -> void:
 func _on_host_force_quit() -> void:
 	if _leaving:
 		return
-	_status.text = "L'hôte a quitté la mission."
+	_status.text = _lt("lobby_host_left")
 	await get_tree().create_timer(1.5).timeout
 	_leave_room(false)
 
@@ -166,7 +166,7 @@ func _on_list_updated(_rid: String, _data: Array) -> void:
 		_status.text = _lt("lobby_waiting_host") % [current, total]
 
 func _on_room_full(_rid: String) -> void:
-	_status.text = "Room pleine !"
+	_status.text = _lt("lobby_room_full")
 
 func _refresh_slots() -> void:
 	# Autorité hôte : le format de la room publiée fait foi. Évite qu'un
@@ -211,7 +211,7 @@ func _on_lancer_pressed() -> void:
 		Matchmaker.update_room(GameConfig.room_name, GameConfig.players.size(), true)
 		RoomManager._start_game(GameConfig.room_name)
 	else:
-		_status.text = "Room introuvable !"
+		_status.text = _lt("listrooms_notfound")
 
 func _on_quitter_pressed() -> void:
 	_leave_room(true)

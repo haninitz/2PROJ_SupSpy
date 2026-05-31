@@ -49,15 +49,15 @@ func _build() -> void:
 
 func _on_create_pressed() -> void:
 	var room_name := _input_room.text.strip_edges()
-	if room_name.is_empty(): _status.text = "Entre un nom de mission !"; return
-	if room_name.length() < 3: _status.text = "Minimum 3 caractères !"; return
-	if room_name.length() > 20: _status.text = "Nom trop long (20 max) !"; return
+	if room_name.is_empty(): _status.text = _lt("nomroom_err_empty"); return
+	if room_name.length() < 3: _status.text = _lt("nomroom_err_short"); return
+	if room_name.length() > 20: _status.text = _lt("nomroom_err_long"); return
 
 	GameConfig.room_name = room_name
 	GameConfig.is_host   = true
 	GameConfig.mode      = "multi"
 	_btn_create.disabled = true
-	_status.text         = "Enregistrement de la room…"
+	_status.text         = _lt("nomroom_registering")
 
 	# Nettoyer toute connexion résiduelle via NetworkManager pour garder
 	# _peer et multiplayer.multiplayer_peer synchronisés (évite le désync).
@@ -79,11 +79,11 @@ func _on_create_pressed() -> void:
 	# Timeout 12s si le matchmaker ne répond pas
 	await get_tree().create_timer(12.0).timeout
 	if is_inside_tree() and _status.text == "Enregistrement de la room…":
-		_status.text         = "Timeout — le serveur ne répond pas, réessaie."
+		_status.text         = _lt("nomroom_timeout")
 		_btn_create.disabled = false
 
 func _on_room_registered(_room_name: String) -> void:
-	_status.text = "Room créée ! Connexion en cours…"
+	_status.text = _lt("nomroom_created")
 	# NB : on n'enregistre PAS l'hôte ici. my_peer_id vaut encore 0 avant
 	# create_server() ; l'enregistrer maintenant créerait un slot fantôme
 	# (Joueur 0) en plus du vrai (Joueur 1). L'enregistrement se fait
@@ -94,7 +94,7 @@ func _on_room_registered(_room_name: String) -> void:
 	SceneLoader.goto("res://scenes/online/SalleAttente.tscn")
 
 func _on_matchmaker_error() -> void:
-	_status.text         = "Erreur réseau — réessaie."
+	_status.text         = _lt("nomroom_err_network")
 	_btn_create.disabled = false
 
 func _flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:

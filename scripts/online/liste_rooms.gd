@@ -163,7 +163,7 @@ func _join_room(room_name: String, map: String, format: String,
 		return
 	_joining = true
 	_set_room_buttons_disabled(true)
-	_status.text         = "Connexion à '%s'…" % room_name
+	_status.text         = _lt("listrooms_connecting") % room_name
 	GameConfig.room_name = room_name
 	GameConfig.map       = map
 	GameConfig.format    = format
@@ -184,13 +184,13 @@ func _join_room(room_name: String, map: String, format: String,
 
 func _on_connected() -> void:
 	_joining = false
-	_status.text = "Connecté !"
+	_status.text = _lt("listrooms_connected")
 	SceneLoader.goto("res://scenes/online/SalleAttente.tscn")
 
 func _on_connection_fail() -> void:
 	_joining = false
 	_set_room_buttons_disabled(false)
-	_status.text = "Le serveur ne répond pas — réessaie"
+	_status.text = _lt("listrooms_timeout")
 
 func _on_connection_progress(message: String) -> void:
 	# N'afficher l'avancement que pendant une tentative de join active.
@@ -203,7 +203,7 @@ func _set_room_buttons_disabled(disabled: bool) -> void:
 			c.disabled = disabled
 
 func _on_room_not_found() -> void:
-	_status.text = "Room introuvable !"
+	_status.text = _lt("listrooms_notfound")
 
 func _flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()

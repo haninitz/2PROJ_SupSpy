@@ -182,7 +182,7 @@ func _build_main_menu() -> void:
 		main_menu.add_child(b)
 		
 	# ── Bouton Déconnexion (haut-gauche) ──────────────────────────────────────
-	var logout_btn : Button = U.btn("⏏ Déconnexion", Vector2(28, 28), Vector2(140, 34), 12)
+	var logout_btn : Button = U.btn(U.lt("logout"), Vector2(28, 28), Vector2(140, 34), 12)
 	logout_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.10, 0.03, 0.06), Color(0.8, 0.1, 0.3), 2, 8))
 	logout_btn.add_theme_stylebox_override("hover",
