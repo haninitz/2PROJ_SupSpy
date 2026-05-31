@@ -1,4 +1,4 @@
-# 🕵️‍♀️ SupKonQuest — Totally Spies Edition
+# 🕵️‍♀️ SupKonQuest — Totally Spies Edition SupSpy
 
 > Jeu de stratégie / conquête temps réel — Projet 2PROJ · SUPINFO Paris  
 > Capturez des camps, produisez des unités, éliminez vos adversaires.
@@ -9,7 +9,14 @@
 - **Statut :** Playable ✅
 
 ---
+## Objectif du jeu
 
+Chaque joueur commence avec un camp de départ.
+Le but est de capturer progressivement les camps neutres ou ennemis afin d’étendre son territoire, augmenter ses revenus et produire davantage d’unités.
+
+Une partie se termine lorsqu’un joueur ne possède plus aucun camp.
+
+---
 ## 🎮 Présentation
 
 | Moteur | Godot 4.6.2 stable (GL Compatibility) |
