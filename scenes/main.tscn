@@ -11,10 +11,12 @@
 script = ExtResource("1_main")
 
 [node name="VideoStreamPlayer" type="VideoStreamPlayer" parent="." unique_id=1184511935]
-offset_left = 20.0
-offset_top = 24.0
-offset_right = 820.0
-offset_bottom = 418.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(0.3, 0.3)
 loop = true
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=42575254]
