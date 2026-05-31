@@ -20,7 +20,6 @@ var gold:     int    = 300
 var initial_state: Dictionary = {}
 
 func get_max_players() -> int:
-	# Format peut être "2".."8" (nb joueurs) ou legacy "1v1","2v2","3v3","4v4"
 	if format.is_valid_int():
 		return clamp(int(format), 2, 8)
 	match format:

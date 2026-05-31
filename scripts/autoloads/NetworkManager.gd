@@ -1,48 +1,27 @@
 extends Node
 
-# ── Config ────────────────────────────────────────────────────────────────────
-# Connexion via RELAY WebSocket en ligne. L'hôte ET le client sont tous les deux
-# des clients WebSocket du relay (wss://…onrender.com). Le relay a été rendu
-# "Godot-compatible" : il envoie à chaque nouveau peer 4 octets (int32 LE) avec
-# son peer ID (≥ 2), ce qu'attend WebSocketMultiplayerPeer pour passer CONNECTED.
-# GameConfig.is_host = seule source de vérité pour "qui est l'hôte" (pas peer ID).
-# Le Matchmaker Render reste utilisé pour la liste des rooms uniquement.
 const RELAY_URL := "wss://sup-kon-quest-server.onrender.com"
-# PORT conservé pour compat. avec d'autres scripts (Matchmaker.gd) — non utilisé
-# pour la connexion relay.
 const PORT      := 7777
 
-# ── Signaux (identiques à avant — aucun script à changer) ─────────────────────
 signal connected_to_server
 signal connection_failed
 signal player_connected(peer_id: int)
 signal player_disconnected(peer_id: int)
 signal host_disconnected
-# Signal OPTIONNEL : message d'avancement de connexion pour l'UI.
 signal connection_progress(message: String)
 
-# ── État interne ──────────────────────────────────────────────────────────────
 var _peer : WebSocketMultiplayerPeer = null
 var _connected_room : String = ""
-
-# ── Timeout de connexion ──────────────────────────────────────────────────────
-# Le relay Render peut être en cold-start (plusieurs secondes). On laisse un
-# délai généreux avant d'abandonner avec un message clair.
 const CONNECT_TIMEOUT := 20.0
 var _connecting      := false
 var _connect_elapsed := 0.0
 
-# ── API publique (même signature qu'avant) ────────────────────────────────────
-
 func create_server() -> void:
-	# L'hôte n'est PLUS un serveur Godot : il se connecte au relay comme client.
-	# GameConfig.is_host (déjà posé avant l'appel) reste la source de vérité.
 	GameConfig.is_host = true
 	connection_progress.emit("Connexion au serveur de jeu…")
 	_connect_to_relay()
 
 func join_server(ip: String) -> void:
-	# ip est ignoré : la connexion passe par le relay en ligne (plus d'ENet LAN).
 	join_server_with_port(ip, PORT)
 
 func join_server_with_port(_ip: String, _port: int) -> void:
@@ -52,10 +31,6 @@ func join_server_with_port(_ip: String, _port: int) -> void:
 
 func _connect_to_relay() -> void:
 	var want_room := GameConfig.room_name
-
-	# Auto-réparation du désync : du code externe (nom_room / liste_rooms) a pu
-	# faire multiplayer.multiplayer_peer = null sans nettoyer _peer. La connexion
-	# est alors morte → on repart proprement.
 	if _peer != null and multiplayer.multiplayer_peer == null:
 		_peer = null
 		_connected_room = ""
@@ -63,19 +38,15 @@ func _connect_to_relay() -> void:
 	if _peer != null:
 		var st := _peer.get_connection_status()
 		if _connected_room != want_room:
-			# Mauvaise room (ex. connexion parasite room="") → reconnexion propre.
 			print("[NetworkManager] Room différente ('%s'→'%s'), reconnexion." \
 				% [_connected_room, want_room])
 			_teardown()
 		elif st == MultiplayerPeer.CONNECTION_CONNECTED:
-			# Bonne room, déjà connecté : ré-émettre pour débloquer l'appelant
-			# (salle d'attente) qui attend connected_to_server.
 			print("[NetworkManager] Déjà connecté à '%s', ré-émission." % want_room)
 			GameConfig.my_peer_id = multiplayer.get_unique_id()
 			connected_to_server.emit()
 			return
 		else:
-			# Bonne room, connexion encore en cours : _on_connected_ok s'en charge.
 			print("[NetworkManager] Connexion à '%s' déjà en cours." % want_room)
 			return
 
@@ -90,7 +61,6 @@ func _connect_to_relay() -> void:
 	multiplayer.multiplayer_peer = _peer
 	_connected_room = want_room
 
-	# Brancher les signaux une seule fois (évite les fuites au re-clic).
 	if not multiplayer.connected_to_server.is_connected(_on_connected_ok):
 		multiplayer.connected_to_server.connect(_on_connected_ok, CONNECT_ONE_SHOT)
 	if not multiplayer.connection_failed.is_connected(_on_connection_fail):
@@ -103,8 +73,6 @@ func _connect_to_relay() -> void:
 func disconnect_from_server() -> void:
 	_teardown()
 	GameConfig.reset()
-# Coupe la connexion en gardant _peer et multiplayer.multiplayer_peer
-# synchronisés, SANS toucher à GameConfig (room_name/is_host/agent_name conservés).
 func reset_connection() -> void:
 	_teardown()
 
@@ -116,13 +84,9 @@ func _teardown() -> void:
 		multiplayer.multiplayer_peer = null
 		_peer = null
 
-# ── Cycle de vie ──────────────────────────────────────────────────────────────
-
 func _ready() -> void:
-	# Signaux stables sur toute la durée de vie du node.
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	# Réveiller relay + Matchmaker Render — ils peuvent être en veille (cold-start).
 	_wake_servers()
 
 func _wake_servers() -> void:
@@ -137,8 +101,6 @@ func _wake_servers() -> void:
 	print("[NetworkManager] Réveil du relay et du Matchmaker Render…")
 
 func _process(delta: float) -> void:
-	# WebSocketMultiplayerPeer est pollé automatiquement par la SceneTree : on
-	# surveille juste le timeout de connexion.
 	if not _connecting:
 		return
 	_connect_elapsed += delta
@@ -147,8 +109,6 @@ func _process(delta: float) -> void:
 		_teardown()
 		connection_progress.emit("Le serveur ne répond pas. Réessaie dans un instant.")
 		connection_failed.emit()
-
-# ── Callbacks Godot multiplayer ───────────────────────────────────────────────
 
 func _on_connected_ok() -> void:
 	_connecting      = false
@@ -175,8 +135,6 @@ func _on_peer_connected(id: int) -> void:
 func _on_peer_disconnected(id: int) -> void:
 	print("[NetworkManager] Peer déconnecté : %d" % id)
 	player_disconnected.emit(id)
-	# En 1v1 via relay, l'hôte n'est plus peer 1 : si JE suis client, tout peer
-	# qui part est l'hôte (l'unique autre joueur).
 	if not GameConfig.is_host:
 		print("[NetworkManager] L'hôte s'est déconnecté !")
 		host_disconnected.emit()
@@ -188,8 +146,6 @@ func _on_peer_disconnected(id: int) -> void:
 			scene.on_player_left(id)
 		if RoomManager.player_room.has(id):
 			RoomManager.remove_player(id)
-
-# ── RPCs de synchronisation de jeu (inchangés) ───────────────────────────────
 
 @rpc("any_peer", "reliable")
 func sync_initial_state(state: Dictionary) -> void:

@@ -192,7 +192,6 @@ func get_team_color(id: int) -> Color:
 	return player.color if player else Color.WHITE
 
 func _check_victory() -> void:
-	# Nettoyer les camps détruits avant toute vérification
 	camps = camps.filter(func(c): return is_instance_valid(c))
 	if camps.is_empty():
 		return
@@ -218,10 +217,6 @@ func _check_victory() -> void:
 		print("[GameManager] Partie terminée. Gagnant : ", winner_id)
 
 func _assign_camps_to_players() -> void:
-	# Les camps ont déjà leur owner_id grâce à Main.gd.
-	# Ici, on ne change pas les propriétaires.
-	# On enregistre juste les camps dans les bons joueurs.
-
 	for player in players:
 		if "owned_camps" in player:
 			player.owned_camps.clear()
@@ -229,16 +224,11 @@ func _assign_camps_to_players() -> void:
 	for camp in camps:
 		if camp == null:
 			continue
-
 		var owner_id: int = camp.owner_id
-
-		# owner_id = 0 veut dire neutre
 		if owner_id == 0:
 			continue
-
 		var player = find_player_by_id(owner_id)
 		if player == null:
 			continue
-
 		if "owned_camps" in player:
 			player.owned_camps.append(camp)

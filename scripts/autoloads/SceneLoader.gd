@@ -1,11 +1,4 @@
 extends CanvasLayer
-# =============================================================================
-#  SceneLoader.gd — res://scripts/autoloads/SceneLoader.gd
-#
-#  Autoload — écran de chargement animé entre les scènes.
-#  Usage : SceneLoader.goto("res://scenes/Main.tscn")
-#  au lieu de : get_tree().change_scene_to_file("res://scenes/Main.tscn")
-# =============================================================================
 
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)
@@ -18,18 +11,16 @@ var _title     : Label
 var _dots      : Label
 var _stars     : Array = []
 var _target    : String = ""
-var _phase     : String = "idle"  # idle → fade_in → loading → fade_out
+var _phase     : String = "idle"  
 var _alpha     : float  = 0.0
 var _dot_timer : float  = 0.0
 var _dot_count : int    = 0
 var _load_timer: float  = 0.0
 
-
 func _ready() -> void:
 	layer   = 100
 	visible = false
 	_build()
-
 
 func _build() -> void:
 	_overlay          = ColorRect.new()
@@ -38,7 +29,6 @@ func _build() -> void:
 	_overlay.modulate = Color(1, 1, 1, 0)
 	add_child(_overlay)
 
-	# Étoiles décoratives
 	for i in range(12):
 		var s := Label.new()
 		s.text = ["✦","✧","★","◆"][i % 4]
@@ -49,7 +39,6 @@ func _build() -> void:
 		_overlay.add_child(s)
 		_stars.append(s)
 
-	# Titre
 	_title          = Label.new()
 	_title.text     = "SUPSPY"
 	_title.position = Vector2(0, 280)
@@ -60,14 +49,12 @@ func _build() -> void:
 	_title.modulate.a = 0.0
 	_overlay.add_child(_title)
 
-	# Ligne décorative
 	var line        := ColorRect.new()
 	line.color       = Color(C_PINK.r, C_PINK.g, C_PINK.b, 0.5)
 	line.size        = Vector2(300, 2)
 	line.position    = Vector2(1152.0/2 - 150, 390)
 	_overlay.add_child(line)
 
-	# Points de chargement
 	_dots          = Label.new()
 	_dots.text     = "Chargement"
 	_dots.position = Vector2(0, 400)
@@ -78,9 +65,6 @@ func _build() -> void:
 	_dots.modulate.a = 0.0
 	_overlay.add_child(_dots)
 
-
-# ── API publique ──────────────────────────────────────────────────────────────
-
 func goto(scene_path: String) -> void:
 	if _phase != "idle":
 		return
@@ -88,9 +72,6 @@ func goto(scene_path: String) -> void:
 	_phase     = "fade_in"
 	_alpha     = 0.0
 	visible    = true
-
-
-# ── Animation ─────────────────────────────────────────────────────────────────
 
 func _process(delta: float) -> void:
 	if _phase == "idle":
@@ -124,7 +105,6 @@ func _process(delta: float) -> void:
 			if _alpha <= 0.0:
 				_phase   = "idle"
 				visible  = false
-
 
 func _apply_alpha(a: float, t: float) -> void:
 	_overlay.modulate.a = a

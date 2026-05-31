@@ -1,16 +1,4 @@
 extends Node
-# =============================================================================
-#  RegionDefs.gd  —  res://scripts/RegionDefs.gd
-#
-#  Définit les régions pour chaque map.
-#  Chaque région = { id, name, bonus_gold, bonus_units, camp_ids[] }
-#
-#  Les camp_ids correspondent aux @export var camp_id sur chaque nœud Camp.
-#
-#  MAP 0 = Beverly Hills
-#  MAP 1 = Jungle Techno
-#  MAP 2 = Île Tropicale
-# =============================================================================
 
 const REGIONS : Dictionary = {
 	0: [  # Beverly Hills
@@ -29,8 +17,6 @@ const REGIONS : Dictionary = {
 		{"id": 2, "name": "East Outposts",  "bonus_gold": 20, "bonus_units": 1, "camp_ids": [5, 6]},
 	],
 }
-
-
 static func get_regions(map_index: int) -> Array:
 	if REGIONS.has(map_index):
 		return REGIONS[map_index]

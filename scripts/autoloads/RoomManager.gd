@@ -8,27 +8,20 @@ signal client_timeout(peer_id: int)
 var rooms:       Dictionary = {}
 var player_room: Dictionary = {}
 
-# ── Helper : remplace multiplayer.is_server() ─────────────────────────────────
 func _is_host() -> bool:
 	return GameConfig.is_host
-
-# ── Rejoindre une room ────────────────────────────────────────────────────────
 
 @rpc("any_peer", "reliable")
 func request_join_room(room_id: String, mode: String,
 		format: String, diff: String, map: String, player_name: String) -> void:
 	if not _is_host():
 		return
-	# Avec WebSocket relay, get_remote_sender_id() peut retourner 1
-	# On utilise l'ID de l'appelant RPC directement
 	var sender: int = multiplayer.get_remote_sender_id()
 	if sender == 1 or sender == 0:
-		# Fallback : utiliser un ID basé sur le nombre de joueurs actuels
 		sender = _next_client_id()
 	_register_player(sender, room_id, mode, format, diff, map, player_name)
 
-var _client_counter : int = 2  # 1 = hôte, clients commencent à 2
-
+var _client_counter : int = 2  
 var _start_done := false
 
 func _next_client_id() -> int:
@@ -49,16 +42,12 @@ func _register_player(sender: int, room_id: String, mode: String,
 		format: String, diff: String, map: String, player_name: String,
 		host_id: int = -1) -> void:
 	if not rooms.has(room_id):
-		# _create_room ne tourne que côté hôte ; si host_id n'est pas fourni
-		# (cas d'un client arrivé avant l'enregistrement de l'hôte), on retombe
-		# sur my_peer_id qui vaut 1 côté hôte.
 		_create_room(room_id, mode, format, diff, map,
 			host_id if host_id >= 0 else GameConfig.my_peer_id)
 	var room:  Dictionary = rooms[room_id]
 	var max_p: int        = _format_to_max(room.format)
 	if room.players.size() >= max_p:
 		if sender != GameConfig.my_peer_id:
-			# Relay broadcast : en 1v1, .rpc() atteint l'unique autre joueur.
 			_notify_full.rpc(room_id)
 		return
 	var join_order: int = room.players.size()
@@ -76,7 +65,6 @@ func _register_player(sender: int, room_id: String, mode: String,
 		GameConfig.format = format; GameConfig.diff = diff
 		GameConfig.map = map; GameConfig.is_host = true
 	else:
-		# Relay broadcast : en 1v1, .rpc() atteint l'unique autre joueur (le client).
 		_confirm_join.rpc(room_id, team, join_order,
 			room.mode, room.format, room.diff, room.map)
 	_broadcast_list(room_id)
@@ -140,7 +128,7 @@ func _broadcast_list(room_id: String) -> void:
 	var fmt: String  = rooms[room_id].get("format", GameConfig.format)
 	for pid in rooms[room_id].players:
 		if GameConfig.is_host and pid == host_id:
-			GameConfig.format = fmt            # autorité : format de la room
+			GameConfig.format = fmt        
 			GameConfig.players.clear()
 			for p in data: GameConfig.players[p.id] = p
 			player_list_updated.emit(room_id, data)
@@ -162,7 +150,7 @@ func _notify_full(room_id: String) -> void:
 @rpc("any_peer", "reliable")
 func _receive_list(room_id: String, data: Array, fmt: String = "") -> void:
 	if fmt != "":
-		GameConfig.format = fmt            # autorité : format reçu de l'hôte (évite un 1v1/2v2 périmé)
+		GameConfig.format = fmt           
 	GameConfig.players.clear()
 	for p in data: GameConfig.players[p.id] = p
 	player_list_updated.emit(room_id, data)
@@ -189,8 +177,6 @@ func _format_to_max(format: String) -> int:
 		"3v3": return 6
 	return 2
 
-# ── Déconnexion hôte ──────────────────────────────────────────────────────────
-
 func handle_host_left(room_id: String) -> void:
 	if not rooms.has(room_id): return
 	_notify_host_left.rpc(room_id)
@@ -202,8 +188,6 @@ func _notify_host_left(room_id: String) -> void:
 	host_left.emit(room_id)
 	GameConfig.reset()
 	get_tree().change_scene_to_file("res://scenes/online/OnlineMenu.tscn")
-
-# ── Timeout client ────────────────────────────────────────────────────────────
 
 const JOIN_TIMEOUT := 15.0
 var _pending_clients: Dictionary = {}
