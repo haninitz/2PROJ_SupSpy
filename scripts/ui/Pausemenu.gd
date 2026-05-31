@@ -1,12 +1,5 @@
 class_name PauseMenu
 extends CanvasLayer
-# =============================================================================
-#  PauseMenu.gd — SupKonQuest · Totally Spies Edition
-#
-#  Menu pause affiché quand le joueur appuie sur ESC en jeu.
-#  S'ajoute comme enfant de Main (ou UI) avec layer = 10.
-#  Gèle le jeu via get_tree().paused = true.
-# =============================================================================
 
 signal resumed
 signal quit_to_menu
@@ -14,7 +7,6 @@ signal quit_to_menu
 var _panel       : Panel
 var _active      : bool = false
 var U            : Node
-# Références pour mise à jour dynamique de la langue
 var _title_lbl   : Label
 var _sub_lbl     : Label
 var _hint_lbl    : Label
@@ -22,7 +14,6 @@ var _btn_resume  : Button
 var _btn_options : Button
 var _btn_menu    : Button
 var _btn_quit    : Button
-
 
 func setup(u: Node) -> void:
 	U = u
@@ -32,14 +23,11 @@ func setup(u: Node) -> void:
 
 
 func _build() -> void:
-	# Fond sombre semi-transparent
 	var bg := ColorRect.new()
 	bg.color         = Color(0.0, 0.0, 0.0, 0.60)
 	bg.size          = Vector2(1152, 720)
 	bg.position      = Vector2.ZERO
 	add_child(bg)
-
-	# Panneau central
 	_panel = Panel.new()
 	_panel.position = Vector2(1152.0 / 2.0 - 200, 720.0 / 2.0 - 200)
 	_panel.size     = Vector2(400, 380)
@@ -47,7 +35,6 @@ func _build() -> void:
 		U.flat(Color(0.04, 0.02, 0.10, 0.96), U.C_PINK, 2, 16))
 	add_child(_panel)
 
-	# Titre
 	_title_lbl      = U.lbl(U.lt("pause_title"), Vector2(0, 28), 28, U.C_PINK)
 	_title_lbl.size = Vector2(400, 50)
 	_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -58,14 +45,12 @@ func _build() -> void:
 	_sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_panel.add_child(_sub_lbl)
 
-	# Diviseur
 	var div := ColorRect.new()
 	div.color    = Color(U.C_PINK.r, U.C_PINK.g, U.C_PINK.b, 0.35)
 	div.position = Vector2(30, 96)
 	div.size     = Vector2(340, 1)
 	_panel.add_child(div)
 
-	# Boutons (stockés pour mise à jour dynamique)
 	var btn_defs := [
 		{"key": "pause_resume",  "col": U.C_PINK,              "fn": func(): resume(),         "ref": "_btn_resume"},
 		{"key": "pause_options", "col": U.C_CYAN,              "fn": func(): _open_options(),  "ref": "_btn_options"},
@@ -84,23 +69,17 @@ func _build() -> void:
 		b.add_theme_color_override("font_color", U.C_WHITE)
 		b.pressed.connect(bd["fn"])
 		_panel.add_child(b)
-		# Stocke la référence dans la variable membre correspondante
 		match bd["ref"]:
 			"_btn_resume":  _btn_resume  = b
 			"_btn_options": _btn_options = b
 			"_btn_menu":    _btn_menu    = b
 			"_btn_quit":    _btn_quit    = b
 
-	# Raccourci ESC affiché
 	_hint_lbl      = U.lbl(U.lt("pause_hint"), Vector2(0, 350), 10, Color(0.40, 0.30, 0.55))
 	_hint_lbl.size = Vector2(400, 20)
 	_hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_panel.add_child(_hint_lbl)
-
 	visible = false
-
-
-# ── API publique ──────────────────────────────────────────────────────────────
 
 func toggle() -> void:
 	if _active:
@@ -108,12 +87,10 @@ func toggle() -> void:
 	else:
 		pause()
 
-
 func pause() -> void:
 	_active           = true
 	visible           = true
 	get_tree().paused = true
-	# Mise à jour texte selon langue courante
 	if _title_lbl:   _title_lbl.text   = U.lt("pause_title")
 	if _sub_lbl:     _sub_lbl.text     = U.lt("pause_sub")
 	if _hint_lbl:    _hint_lbl.text    = U.lt("pause_hint")
@@ -122,18 +99,13 @@ func pause() -> void:
 	if _btn_menu:    _btn_menu.text    = U.lt("pause_menu")
 	if _btn_quit:    _btn_quit.text    = U.lt("pause_quit")
 
-
 func resume() -> void:
 	_active              = false
 	visible              = false
 	get_tree().paused    = false
 	resumed.emit()
 
-
-# ── Privé ─────────────────────────────────────────────────────────────────────
-
 func _open_options() -> void:
-	# Crée un panel settings par-dessus le menu pause
 	var scr : Panel = Panel.new()
 	scr.position = Vector2(1152.0 / 2.0 - 300, 720.0 / 2.0 - 260)
 	scr.size     = Vector2(600, 480)
@@ -142,7 +114,6 @@ func _open_options() -> void:
 		U.flat(Color(0.04, 0.02, 0.10, 0.98), U.C_CYAN, 2, 14))
 	add_child(scr)
 
-	# Titre
 	var title : Label = U.lbl(U.lt("opt_title"), Vector2(0, 22), 22, U.C_CYAN)
 	title.size = Vector2(600, 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -153,7 +124,6 @@ func _open_options() -> void:
 	div.position = Vector2(30, 60); div.size = Vector2(540, 1)
 	scr.add_child(div)
 
-	# Langue
 	scr.add_child(U.lbl(U.lt("opt_language"), Vector2(40, 80), 13, U.C_PINK))
 	var lang_codes  : Array[String] = ["fr", "en", "es"]
 	var lang_labels : Array[String] = ["🇫🇷 FR", "🇬🇧 EN", "🇪🇸 ES"]
@@ -169,7 +139,6 @@ func _open_options() -> void:
 			if lang: lang.current = captured_lc)
 		scr.add_child(lb)
 
-	# Volume son
 	scr.add_child(U.lbl(U.lt("opt_sound"), Vector2(40, 155), 13, U.C_CYAN))
 	var sv : HSlider = HSlider.new()
 	sv.position = Vector2(40, 177); sv.size = Vector2(520, 22)
@@ -179,8 +148,6 @@ func _open_options() -> void:
 		AudioServer.set_bus_volume_db(
 			AudioServer.get_bus_index("Master"), linear_to_db(v / 100.0)))
 	scr.add_child(sv)
-
-	# Volume musique
 	scr.add_child(U.lbl(U.lt("opt_music"), Vector2(40, 215), 13, U.C_CYAN))
 	var mv : HSlider = HSlider.new()
 	mv.position = Vector2(40, 237); mv.size = Vector2(520, 22)
@@ -191,8 +158,6 @@ func _open_options() -> void:
 		if bus_idx >= 0:
 			AudioServer.set_bus_volume_db(bus_idx, linear_to_db(v / 100.0)))
 	scr.add_child(mv)
-
-	# Affichage
 	scr.add_child(U.lbl(U.lt("opt_display"), Vector2(40, 278), 13, U.C_GOLD))
 	var disp_labels : Array[String] = ["Fullscreen", "Windowed", "Borderless"]
 	for i in range(3):
@@ -211,7 +176,6 @@ func _open_options() -> void:
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED))
 		scr.add_child(db)
 
-	# Bouton fermer
 	var close : Button = U.btn(U.lt("opt_close"), Vector2(200, 415), Vector2(200, 42), 15)
 	close.process_mode = Node.PROCESS_MODE_ALWAYS
 	close.add_theme_stylebox_override("normal",
@@ -220,9 +184,8 @@ func _open_options() -> void:
 	close.pressed.connect(func(): scr.queue_free())
 	scr.add_child(close)
 
-
 func _go_to_menu() -> void:
 	get_tree().paused = false
-	GameConfig.mode   = ""   # empêche l'auto-démarrage au rechargement
+	GameConfig.mode   = ""   
 	get_tree().reload_current_scene()
 	quit_to_menu.emit()

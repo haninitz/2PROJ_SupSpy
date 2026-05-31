@@ -1,19 +1,9 @@
 extends Node
-# =============================================================================
-#  UIUtils.gd — SupKonQuest · Totally Spies Edition
-#
-#  Autoload unique : constantes + utilitaires UI
-#  Project Settings > Autoload > ajouter ce fichier avec le nom "UIUtils"
-#  Utilisation : UIUtils.C_PINK  /  UIUtils.flat(...)  /  UIUtils.lbl(...)
-# =============================================================================
 
-# ── Layout ────────────────────────────────────────────────────────────────────
 const WIN_W : int = 1152
 const WIN_H : int = 720
 const MAP_H : int = 620
 const BTN_W : int = 134
-
-# ── Palette ───────────────────────────────────────────────────────────────────
 const C_BG        := Color(0.04, 0.02, 0.10)
 const C_PINK      := Color(1.00, 0.20, 0.58)
 const C_PINK_LITE := Color(1.00, 0.55, 0.80)
@@ -24,8 +14,6 @@ const C_GREEN     := Color(0.20, 0.78, 0.30)
 const C_WHITE     := Color(1.00, 1.00, 1.00)
 const C_PANEL     := Color(0.06, 0.03, 0.14, 0.95)
 
-# ── Constructeurs de contrôles ────────────────────────────────────────────────
-
 func flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color     = bg
@@ -34,7 +22,6 @@ func flat(bg: Color, border: Color, bw: int, cr: int) -> StyleBoxFlat:
 	s.set_corner_radius_all(cr)
 	return s
 
-
 func lbl(text: String, pos: Vector2, size: int, col: Color) -> Label:
 	var l := Label.new()
 	l.text     = text
@@ -42,7 +29,6 @@ func lbl(text: String, pos: Vector2, size: int, col: Color) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", col)
 	return l
-
 
 func btn(text: String, pos: Vector2, sz: Vector2, fsize: int) -> Button:
 	var b := Button.new()
@@ -53,7 +39,6 @@ func btn(text: String, pos: Vector2, sz: Vector2, fsize: int) -> Button:
 	b.add_theme_color_override("font_color", C_WHITE)
 	return b
 
-
 func back_btn(action: Callable) -> Button:
 	var b := btn(lt("back"), Vector2(28, 658), Vector2(140, 38), 14)
 	b.add_theme_stylebox_override("normal",
@@ -61,7 +46,6 @@ func back_btn(action: Callable) -> Button:
 	b.add_theme_color_override("font_color", Color(0.78, 0.72, 0.90))
 	b.pressed.connect(action)
 	return b
-
 
 func make_screen(visible_: bool = true) -> Panel:
 	var p := Panel.new()
@@ -71,15 +55,9 @@ func make_screen(visible_: bool = true) -> Panel:
 	p.add_theme_stylebox_override("panel", flat(C_BG, C_BG, 0, 0))
 	return p
 
-
-# ── Navigation ────────────────────────────────────────────────────────────────
-
 func goto(from: Panel, to: Panel) -> void:
 	from.visible = false
 	to.visible   = true
-
-
-# ── Décoration ────────────────────────────────────────────────────────────────
 
 func add_header(parent: Control, title: String, col: Color) -> void:
 	var top := ColorRect.new()
@@ -112,15 +90,11 @@ func add_badge(parent: Control, text: String, pos: Vector2, sz: Vector2, col: Co
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(l)
 
-
-# ── Localisation ──────────────────────────────────────────────────────────────
-
 func lt(key: String) -> String:
 	var lang := get_node_or_null("/root/Lang")
 	if lang and lang.has_method("t"):
 		return lang.t(key)
 	return key
-
 
 func get_lang() -> String:
 	var lang := get_node_or_null("/root/Lang")

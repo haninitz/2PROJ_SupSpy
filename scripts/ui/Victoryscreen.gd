@@ -3,31 +3,23 @@ extends Node
 
 var U : Node
 signal turn_confirmed
-
-# ── Écran victoire ────────────────────────────────────────────────────────────
 var victory_screen   : Panel
 var victory_title    : Label
 var victory_winner   : Label
 var victory_sparkles : Array = []
 var _confetti_pieces : Array = []
 var _end_layer: CanvasLayer = null
-
-# ── Écran défaite ─────────────────────────────────────────────────────────────
 var defeat_screen      : Panel
 var _defeat_title_lbl  : Label
 var _defeat_badge_lbl  : Label
 var _defeat_sub_lbl    : Label
 var _defeat_try_btn    : Button
 var _defeat_quit_btn   : Button
-# ── Écran victoire (labels dynamiques) ───────────────────────────────────────
 var _victory_badge_lbl : Label
 var _victory_sub_lbl   : Label
 var _victory_play_btn  : Button
 var _victory_quit_btn  : Button
-
-# ── Interne ───────────────────────────────────────────────────────────────────
 var _parent : Node
-
 
 func initialize(parent: Node, u: Node) -> void:
 	U       = u
@@ -45,15 +37,9 @@ func _ensure_end_layer() -> void:
 	_end_layer.layer = 999
 	_parent.add_child(_end_layer)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  ANIMATION
-# ─────────────────────────────────────────────────────────────────────────────
-
 func animate(t: float) -> void:
 	if victory_screen and victory_screen.visible:
 		_animate_victory(t)
-
 
 func _animate_victory(t: float) -> void:
 	if victory_title:
@@ -80,14 +66,7 @@ func _animate_victory(t: float) -> void:
 		lbl.rotation   = t * 0.8 + c["phase"]
 		lbl.modulate.a = clamp(0.85 - max(0.0, lbl.position.y - 680.0) / 80.0, 0.0, 1.0)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  API PUBLIQUE
-# ─────────────────────────────────────────────────────────────────────────────
-
 func show_victory(winner_name: String, stats: Dictionary = {}) -> void:
-	# Vérifie si c'est le joueur LOCAL qui gagne
-	# On cherche local_player_id dans Main pour trouver le bon joueur
 	var gm   = _parent.get_node_or_null("/root/GameManager")
 	var main = _parent.get_tree().get_first_node_in_group("main_node")
 	var local_player_id : int = 1
@@ -106,7 +85,6 @@ func show_victory(winner_name: String, stats: Dictionary = {}) -> void:
 
 	victory_winner.text     = winner_name
 	victory_winner.modulate = U.C_PINK
-	# Mise à jour texte selon langue courante
 	if victory_title:
 		victory_title.text = U.lt("victory_scr_title")
 	if _victory_sub_lbl:
@@ -125,7 +103,6 @@ func show_victory(winner_name: String, stats: Dictionary = {}) -> void:
 
 
 func show_defeat(winner_name: String, stats: Dictionary = {}) -> void:
-	# Mise à jour texte selon langue courante
 	if _defeat_title_lbl:
 		_defeat_title_lbl.text = U.lt("defeat_scr_title")
 	if _defeat_sub_lbl:
@@ -147,26 +124,17 @@ func show_defeat(winner_name: String, stats: Dictionary = {}) -> void:
 
 	Sound.play("defeat")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  STATS PANEL  (commun victoire + défaite)
-# ─────────────────────────────────────────────────────────────────────────────
-
 func _fill_stats_panel(screen: Panel, winner_name: String,
 		stats: Dictionary, is_victory: bool) -> void:
 
 	var container : Node = screen.get_node_or_null("StatsContainer")
 	if container == null:
-		return  # pas encore construit (ne devrait pas arriver)
-
-	# Vide les anciens enfants
+		return 
 	for c in container.get_children():
 		container.remove_child(c)
 		c.free()
 
 	var accent : Color = U.C_PINK if is_victory else Color(0.85, 0.25, 0.25)
-
-	# ── Ligne durée ───────────────────────────────────────────────────────────
 	var dur_sec : float = stats.get("duration_sec", 0.0)
 	var dur_str : String
 	if dur_sec >= 60.0:
@@ -194,7 +162,6 @@ func _fill_stats_panel(screen: Panel, winner_name: String,
 	_add_stat_row(container, U.lt("stat_winner"), winner_name,
 		U.C_GOLD if is_victory else Color(0.80, 0.50, 0.50))
 
-
 func _add_stat_row(parent: Node, key: String, value: String, accent: Color) -> void:
 	var row := HBoxContainer.new()
 	row.custom_minimum_size = Vector2(560, 28)
@@ -206,8 +173,6 @@ func _add_stat_row(parent: Node, key: String, value: String, accent: Color) -> v
 	key_lbl.add_theme_font_size_override("font_size", 13)
 	key_lbl.add_theme_color_override("font_color", Color(0.75, 0.75, 0.85))
 	row.add_child(key_lbl)
-
-	# Séparateur pointillé
 	var dots := Label.new()
 	dots.text = "· · · · · · · · · ·"
 	dots.custom_minimum_size = Vector2(140, 28)
@@ -224,11 +189,6 @@ func _add_stat_row(parent: Node, key: String, value: String, accent: Color) -> v
 	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(val_lbl)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  CONSTRUCTION
-# ─────────────────────────────────────────────────────────────────────────────
-
 func _build_victory_screen() -> void:
 	victory_screen = U.make_screen(false)
 	var ov := StyleBoxFlat.new()
@@ -238,8 +198,6 @@ func _build_victory_screen() -> void:
 	victory_screen.z_index = 4096
 	victory_screen.z_as_relative = false
 	victory_screen.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	# Panneau central
 	var panel := Panel.new()
 	panel.position = Vector2(U.WIN_W / 2 - 360, 80)
 	panel.size     = Vector2(720, 530)
@@ -249,8 +207,6 @@ func _build_victory_screen() -> void:
 
 	U.add_badge(victory_screen, U.lt("mission_complete"),
 		Vector2(U.WIN_W / 2 - 100, 88), Vector2(200, 26), U.C_PINK)
-
-	# Titre animé
 	victory_title          = Label.new()
 	victory_title.text     = U.lt("victory_scr_title")
 	victory_title.position = Vector2(U.WIN_W / 2 - 360, 122)
@@ -259,8 +215,6 @@ func _build_victory_screen() -> void:
 	victory_title.add_theme_font_size_override("font_size", 56)
 	victory_title.modulate = U.C_PINK
 	victory_screen.add_child(victory_title)
-
-	# Nom du gagnant
 	victory_winner          = Label.new()
 	victory_winner.position = Vector2(U.WIN_W / 2 - 360, 210)
 	victory_winner.size     = Vector2(720, 46)
@@ -271,23 +225,17 @@ func _build_victory_screen() -> void:
 	_victory_sub_lbl = U.lbl(U.lt("agent_secured"),
 		Vector2(U.WIN_W / 2 - 360, 258), 13, Color(0.70, 0.55, 0.85))
 	victory_screen.add_child(_victory_sub_lbl)
-
-	# Séparateur stats
 	var div := ColorRect.new()
 	div.position = Vector2(U.WIN_W / 2 - 300, 285)
 	div.size     = Vector2(600, 1)
 	div.color    = Color(U.C_PINK.r, U.C_PINK.g, U.C_PINK.b, 0.30)
 	victory_screen.add_child(div)
-
-	# Conteneur stats (rempli par _fill_stats_panel)
 	var stats_container := VBoxContainer.new()
 	stats_container.name     = "StatsContainer"
 	stats_container.position = Vector2(U.WIN_W / 2 - 295, 295)
 	stats_container.size     = Vector2(590, 210)
 	stats_container.add_theme_constant_override("separation", 4)
 	victory_screen.add_child(stats_container)
-
-	# Boutons
 	_victory_play_btn = U.btn(U.lt("play_again"),
 		Vector2(U.WIN_W / 2 - 240, 620), Vector2(200, 50), 18)
 	_victory_play_btn.add_theme_stylebox_override("normal",
@@ -303,8 +251,6 @@ func _build_victory_screen() -> void:
 	_victory_quit_btn.add_theme_color_override("font_color", U.C_WHITE)
 	_victory_quit_btn.pressed.connect(func(): _parent.get_tree().quit())
 	victory_screen.add_child(_victory_quit_btn)
-
-	# Étoiles orbitales
 	var shapes : Array[String] = ["✦","✧","◆","✶","⋆"]
 	var colors : Array[Color]  = [U.C_PINK, U.C_CYAN, U.C_GOLD, U.C_PURPLE]
 	for i in range(12):
@@ -315,8 +261,6 @@ func _build_victory_screen() -> void:
 		s.modulate.a = 0.0
 		victory_screen.add_child(s)
 		victory_sparkles.append(s)
-
-	# Confettis
 	var c_shapes : Array[String] = ["✦","○","+","×","◆"]
 	var c_colors : Array[Color]  = [U.C_PINK, U.C_CYAN, U.C_GOLD, U.C_PURPLE, U.C_WHITE]
 	for i in range(40):
@@ -334,7 +278,6 @@ func _build_victory_screen() -> void:
 			"phase": float(i) * 0.44
 		})
 
-
 func _build_defeat_screen() -> void:
 	defeat_screen = U.make_screen(false)
 	var ov := StyleBoxFlat.new()
@@ -344,8 +287,6 @@ func _build_defeat_screen() -> void:
 	defeat_screen.z_index = 4096
 	defeat_screen.z_as_relative = false
 	defeat_screen.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	# Panneau central
 	var panel := Panel.new()
 	panel.position = Vector2(U.WIN_W / 2 - 360, 80)
 	panel.size     = Vector2(720, 530)
@@ -355,8 +296,6 @@ func _build_defeat_screen() -> void:
 
 	U.add_badge(defeat_screen, U.lt("mission_failed"),
 		Vector2(U.WIN_W / 2 - 100, 88), Vector2(200, 26), Color(0.65, 0.12, 0.12))
-
-	# Titre
 	_defeat_title_lbl = Label.new()
 	var title := _defeat_title_lbl
 	title.text     = U.lt("defeat_scr_title")
@@ -366,8 +305,6 @@ func _build_defeat_screen() -> void:
 	title.add_theme_font_size_override("font_size", 56)
 	title.modulate = Color(0.85, 0.20, 0.20)
 	defeat_screen.add_child(title)
-
-	# Sous-titre (nom du gagnant — rempli dans show_defeat)
 	var sub := Label.new()
 	sub.name     = "WinnerLabel"
 	sub.text     = ""
@@ -382,14 +319,12 @@ func _build_defeat_screen() -> void:
 		Vector2(U.WIN_W / 2 - 360, 258), 13, Color(0.50, 0.30, 0.30))
 	defeat_screen.add_child(_defeat_sub_lbl)
 
-	# Séparateur
 	var div := ColorRect.new()
 	div.position = Vector2(U.WIN_W / 2 - 300, 285)
 	div.size     = Vector2(600, 1)
 	div.color    = Color(0.60, 0.15, 0.15, 0.40)
 	defeat_screen.add_child(div)
 
-	# Conteneur stats
 	var stats_container := VBoxContainer.new()
 	stats_container.name     = "StatsContainer"
 	stats_container.position = Vector2(U.WIN_W / 2 - 295, 295)
@@ -397,7 +332,6 @@ func _build_defeat_screen() -> void:
 	stats_container.add_theme_constant_override("separation", 4)
 	defeat_screen.add_child(stats_container)
 
-	# Boutons
 	_defeat_try_btn = U.btn(U.lt("try_again"),
 		Vector2(U.WIN_W / 2 - 240, 620), Vector2(200, 50), 18)
 	_defeat_try_btn.add_theme_stylebox_override("normal",

@@ -238,13 +238,9 @@ func _formation_offset(index: int, total: int) -> Vector2:
 	var offset_y  := row * SPACING
 	return Vector2(offset_x, offset_y)
 
-# ─────────────────────────────────────────
-#  GROUPES (Ctrl+1 à Ctrl+9)
-# ─────────────────────────────────────────
 func _assign_group(group_num: int) -> void:
 	if selected_units.is_empty():
 		return
-	# Filtre les unités mortes avant de sauvegarder
 	var alive_now : Array = []
 	for u in selected_units:
 		if is_instance_valid(u):
@@ -255,7 +251,6 @@ func _assign_group(group_num: int) -> void:
 func _select_group(group_num: int) -> void:
 	if not _groups.has(group_num):
 		return
-	# Filtre les unités qui ont été détruites depuis
 	var alive : Array = []
 	for u in _groups[group_num]:
 		if is_instance_valid(u) and u.is_alive:
@@ -269,9 +264,6 @@ func _select_group(group_num: int) -> void:
 	for unit in alive:
 		_add_to_selection(unit)
 
-# ─────────────────────────────────────────
-#  SPELLS (touche Q)
-# ─────────────────────────────────────────
 func _activate_spell_on_selected() -> void:
 	for unit in selected_units:
 		if not is_instance_valid(unit):
@@ -282,9 +274,6 @@ func _activate_spell_on_selected() -> void:
 			Unit.UnitType.SOIGNEUR:
 				unit.activate_compowder_heal()
 
-# ─────────────────────────────────────────
-#  UTILITAIRES
-# ─────────────────────────────────────────
 func get_selected_count() -> int:
 	return selected_units.size()
 
