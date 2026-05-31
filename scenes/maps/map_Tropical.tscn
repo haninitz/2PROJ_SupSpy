@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://xtk84jynf7pf"]
 
-[ext_resource type="Script" path="res://scripts/map_tropical_tilemap.gd" id="1_pgdwf"]
+[ext_resource type="Script" uid="uid://c6770rkfpnny1" path="res://scripts/map_tropical_tilemap.gd" id="1_pgdwf"]
 [ext_resource type="Texture2D" uid="uid://b5xgyh1qu7y1g" path="res://assets/tilesets/cainos/tilemap_packed.png" id="2_4ro0y"]
 [ext_resource type="Texture2D" uid="uid://cns05ixrjm6jc" path="res://assets/tilesets/cainos/0004.png" id="2_kwjc4"]
 [ext_resource type="Texture2D" uid="uid://bblxyda5dbcam" path="res://assets/tilesets/cainos/tilemap.png" id="3_h8n7b"]
