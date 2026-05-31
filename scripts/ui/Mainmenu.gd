@@ -1,11 +1,5 @@
 class_name MainMenu
 extends Node
-# =============================================================================
-#  Mainmenu.gd -- SupSpy · Totally Spies Edition
-#  Menu : SupSpy | AI VS TOI | MULTIJOUEUR | Classement | Paramètres | Quitter
-#  AI  : choisir ta team (nom) + niveau IA → l'IA prend une team différente
-#  Multi : choisir ta team (nom) → Créer mission ou Rejoindre
-# =============================================================================
 
 signal map_selected(map_index: int)
 signal mode_selected(is_ai: bool, difficulty: String)
@@ -22,25 +16,18 @@ var title_label : Label
 var _sparkles   : Array = []
 var _parent     : Node
 var U           : Node
-
-# ── État sélection ────────────────────────────────────────────────────────────
 var _ai_difficulty  : String = "med"
-var _player_team_idx : int   = 0   # index team joueur
+var _player_team_idx : int   = 0
 var video_player : VideoStreamPlayer = null
-
-# ── Leaderboard (remplissage asynchrone depuis le Matchmaker) ─────────────────
-var _lb_scr     : Panel = null            # écran overlay en cours
-var _lb_status  : Label = null            # ligne "Chargement…" / message d'erreur
-var _lb_filled  : bool  = false           # garde anti double-remplissage (réponse + timeout)
-var _lb_rows    : VBoxContainer = null    # conteneur scrollable des lignes
-var _lb_cols_x  : Array[int] = [55, 110, 330, 560, 700]   # #, AGENT, LOGIN, WINS, LOSSES
-
-# ── Écrans inline ─────────────────────────────────────────────────────────────
+var _lb_scr     : Panel = null           
+var _lb_status  : Label = null           
+var _lb_filled  : bool  = false          
+var _lb_rows    : VBoxContainer = null   
+var _lb_cols_x  : Array[int] = [55, 110, 330, 560, 700]  
 var _ai_screen    : Panel = null
 var _multi_screen : Panel = null
 var _play_screen  : Panel = null
 const VID_PATH := "res://assets/video/menu_background.ogv"
-# ── Teams (fallback si GameManager absent) ────────────────────────────────────
 const FALLBACK_TEAMS := [
 	{"name": "Neon Squad",    "color": Color(0.0,  1.0,  1.0 )},
 	{"name": "Shadow Squad",  "color": Color(0.55, 0.55, 0.70)},
@@ -104,10 +91,6 @@ func _get_teams() -> Array:
 		return gm.available_teams
 	return FALLBACK_TEAMS
 
-
-# =============================================================================
-#  MENU PRINCIPAL
-# =============================================================================
 func _build_main_menu() -> void:
 	main_menu = U.make_screen()
 	_parent.add_child(main_menu)
@@ -123,7 +106,6 @@ func _build_main_menu() -> void:
 		s.rotation = deg_to_rad(8.0)
 		main_menu.add_child(s)
 
-	# Titre
 	title_label          = Label.new()
 	title_label.text     = "SupSpy"
 	title_label.position = Vector2(0, 190)
@@ -132,7 +114,6 @@ func _build_main_menu() -> void:
 	title_label.add_theme_font_size_override("font_size", 82)
 	title_label.modulate = U.C_PINK
 	main_menu.add_child(title_label)
-
 	var sub := Label.new()
 	sub.text = "W.O.O.H.P  ·  TOTALLY SPIES EDITION"
 	sub.position = Vector2(0, 306)
@@ -141,14 +122,11 @@ func _build_main_menu() -> void:
 	sub.add_theme_font_size_override("font_size", 12)
 	sub.add_theme_color_override("font_color", Color(U.C_PURPLE.r, U.C_PURPLE.g, U.C_PURPLE.b, 0.80))
 	main_menu.add_child(sub)
-
 	var d1 := ColorRect.new()
 	d1.color    = U.C_PINK
 	d1.position = Vector2(U.WIN_W / 2.0 - 220, 338)
 	d1.size     = Vector2(440, 2)
 	main_menu.add_child(d1)
-
-	# ── Bouton Jouer ────────────────────────────────────────────────────────
 	var play_btn : Button = U.btn("  ▶  " + U.lt("play"),
 		Vector2(U.WIN_W / 2.0 - 180, 356), Vector2(360, 58), 22)
 	play_btn.add_theme_stylebox_override("normal", U.flat(Color(0.28,0.05,0.18), U.C_PINK, 2, 12))
@@ -162,8 +140,6 @@ func _build_main_menu() -> void:
 			video_player.play()
 		UIUtils.goto(main_menu, _play_screen))
 	main_menu.add_child(play_btn)
-
-	# ── Boutons secondaires ─────────────────────────────────────────────────
 	var sec_data : Array = [
 		{"t": U.lt("leaderboard"), "col": U.C_PURPLE,             "fn": func(): _open_leaderboard()},
 		{"t": U.lt("settings"),    "col": Color(0.55, 0.50, 0.75),"fn": func(): _open_settings()},
@@ -181,7 +157,6 @@ func _build_main_menu() -> void:
 		b.pressed.connect(sd["fn"])
 		main_menu.add_child(b)
 		
-	# ── Bouton Déconnexion (haut-gauche) ──────────────────────────────────────
 	var logout_btn : Button = U.btn(U.lt("logout"), Vector2(28, 28), Vector2(140, 34), 12)
 	logout_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.10, 0.03, 0.06), Color(0.8, 0.1, 0.3), 2, 8))
@@ -191,7 +166,6 @@ func _build_main_menu() -> void:
 	logout_btn.pressed.connect(func(): _on_logout())
 	main_menu.add_child(logout_btn)
 
-	# Boutons langue
 	var lang_codes  : Array[String] = ["fr", "en", "es"]
 	var lang_labels : Array[String] = ["FR", "EN", "ES"]
 	for i in range(3):
@@ -207,7 +181,6 @@ func _build_main_menu() -> void:
 			_rebuild())
 		main_menu.add_child(lb)
 
-	# Étoiles
 	var shapes   : Array[String] = ["*", "+", "x", "o", "#"]
 	var s_colors : Array[Color]  = [U.C_PINK, U.C_CYAN, U.C_GOLD, U.C_PURPLE]
 	for i in range(18):
@@ -257,7 +230,6 @@ func _build_play_screen() -> void:
 	_add_video_background(_play_screen)
 	U.add_header(_play_screen, U.lt("play"), U.C_PINK)
 
-	# Bloc AI VS TOI
 	var ai_block := Panel.new()
 	ai_block.position = Vector2(55, 150)
 	ai_block.size     = Vector2(490, 200)
@@ -288,7 +260,6 @@ func _build_play_screen() -> void:
 		UIUtils.goto(_play_screen, _ai_screen))
 	ai_block.add_child(ai_btn)
 
-	# Bloc MULTIJOUEUR
 	var mp_block := Panel.new()
 	mp_block.position = Vector2(607, 150)
 	mp_block.size     = Vector2(490, 200)
@@ -321,10 +292,6 @@ func _build_play_screen() -> void:
 
 	_play_screen.add_child(U.back_btn(func(): UIUtils.goto(_play_screen, main_menu)))
 
-
-# =============================================================================
-#  ÉCRAN AI VS TOI  — choisir team joueur + difficulté IA
-# =============================================================================
 func _build_ai_screen() -> void:
 	_ai_screen = U.make_screen(false)
 	_parent.add_child(_ai_screen)
@@ -332,7 +299,6 @@ func _build_ai_screen() -> void:
 
 	var teams : Array = _get_teams()
 
-	# Indicateur team sélectionnée
 	var sel_label := Label.new()
 	sel_label.name = "AISelLabel"
 	sel_label.text = U.lt("your_team") + teams[0]["name"]
@@ -342,17 +308,13 @@ func _build_ai_screen() -> void:
 	sel_label.add_theme_color_override("font_color", U.C_GOLD)
 	_ai_screen.add_child(sel_label)
 
-	# Grille des teams (2 rangées × 4)
 	_build_team_grid(_ai_screen, teams, Vector2(55, 148), "ai", sel_label)
 
-	# Séparateur
 	var div := ColorRect.new()
 	div.color    = Color(U.C_CYAN.r, U.C_CYAN.g, U.C_CYAN.b, 0.30)
 	div.position = Vector2(55, 346)
 	div.size     = Vector2(U.WIN_W - 110, 1)
 	_ai_screen.add_child(div)
-
-	# Niveau IA
 	_ai_screen.add_child(U.lbl(U.lt("ai_level_label"), Vector2(55, 358), 13, U.C_CYAN))
 	var diff_label := Label.new()
 	diff_label.name = "DiffLabel"
@@ -382,7 +344,6 @@ func _build_ai_screen() -> void:
 			diff_label.text = U.lt(dlk))
 		_ai_screen.add_child(db)
 
-	# Bouton Suivant → map
 	var next_btn : Button = U.btn(U.lt("next_map"),
 		Vector2(U.WIN_W - 380, 638), Vector2(320, 50), 16)
 	next_btn.add_theme_stylebox_override("normal", U.flat(Color(0.28,0.05,0.18), U.C_PINK, 2, 10))
@@ -396,7 +357,6 @@ func _build_ai_screen() -> void:
 func _on_ai_next() -> void:
 	var teams : Array = _get_teams()
 	var player_name : String = teams[_player_team_idx]["name"]
-	# L'IA prend la team suivante (différente du joueur)
 	var ai_idx : int = (_player_team_idx + 1) % teams.size()
 	var ai_name : String = teams[ai_idx]["name"]
 	GameConfig.selected_team_ids.clear()
@@ -407,18 +367,12 @@ func _on_ai_next() -> void:
 	squads_selected.emit(player_name, ai_name)
 	UIUtils.goto(_ai_screen, map_screen)
 
-
-# =============================================================================
-#  ÉCRAN MULTIJOUEUR — choisir team (nom) → Créer ou Rejoindre
-# =============================================================================
 func _build_multi_screen() -> void:
 	_multi_screen = U.make_screen(false)
 	_parent.add_child(_multi_screen)
 	U.add_header(_multi_screen, U.lt("multi_title"), U.C_CYAN)
 
 	var teams : Array = _get_teams()
-
-	# Indicateur team sélectionnée
 	var sel_label := Label.new()
 	sel_label.name = "MPSelLabel"
 	sel_label.text = U.lt("your_agent") + teams[0]["name"]
@@ -427,18 +381,13 @@ func _build_multi_screen() -> void:
 	sel_label.add_theme_font_size_override("font_size", 13)
 	sel_label.add_theme_color_override("font_color", U.C_GOLD)
 	_multi_screen.add_child(sel_label)
-
-	# Grille des teams
 	_build_team_grid(_multi_screen, teams, Vector2(55, 148), "multi", sel_label)
 
-	# Séparateur
 	var div := ColorRect.new()
 	div.color    = Color(U.C_PINK.r, U.C_PINK.g, U.C_PINK.b, 0.30)
 	div.position = Vector2(55, 346)
 	div.size     = Vector2(U.WIN_W - 110, 1)
 	_multi_screen.add_child(div)
-
-	# Statut
 	var status_lbl := Label.new()
 	status_lbl.name = "MPStatus"
 	status_lbl.position = Vector2(55, 610)
@@ -446,8 +395,6 @@ func _build_multi_screen() -> void:
 	status_lbl.add_theme_font_size_override("font_size", 11)
 	status_lbl.add_theme_color_override("font_color", U.C_GOLD)
 	_multi_screen.add_child(status_lbl)
-
-	# Bouton Créer
 	var create_btn : Button = U.btn(U.lt("multi_create"),
 		Vector2(55, 366), Vector2(490, 60), 18)
 	create_btn.add_theme_stylebox_override("normal", U.flat(Color(0.20,0.04,0.12), U.C_PINK, 2, 10))
@@ -462,8 +409,6 @@ func _build_multi_screen() -> void:
 	desc_c.add_theme_font_size_override("font_size", 11)
 	desc_c.add_theme_color_override("font_color", Color(0.70, 0.50, 0.75))
 	_multi_screen.add_child(desc_c)
-
-	# Bouton Rejoindre
 	var join_btn : Button = U.btn(U.lt("multi_join"),
 		Vector2(55, 458), Vector2(490, 60), 18)
 	join_btn.add_theme_stylebox_override("normal", U.flat(Color(0.04,0.12,0.20), U.C_CYAN, 2, 10))
@@ -505,16 +450,11 @@ func _on_multi_join() -> void:
 	GameConfig.is_host    = false
 	SceneLoader.goto("res://scenes/online/ListeRooms.tscn")
 
-
-# =============================================================================
-#  GRILLE DES TEAMS (partagée AI + Multi)
-# =============================================================================
 func _build_team_grid(parent: Panel, teams: Array, origin: Vector2,
 		ctx: String, sel_label: Label) -> void:
 	for i in range(mini(teams.size(), 8)):
 		var team : Dictionary = teams[i]
 		var raw_col : Color   = team["color"]
-		# Évite les couleurs trop sombres (Shadow Squad)
 		var col : Color = raw_col
 		if raw_col.r < 0.15 and raw_col.g < 0.15 and raw_col.b < 0.20:
 			col = Color(0.45, 0.45, 0.70)
@@ -540,10 +480,6 @@ func _build_team_grid(parent: Panel, teams: Array, origin: Vector2,
 				sel_label.text = U.lt("your_agent") + tn)
 		parent.add_child(tb)
 
-
-# =============================================================================
-#  MAP SCREEN
-# =============================================================================
 func _build_map_screen() -> void:
 	map_screen = U.make_screen(false)
 	_parent.add_child(map_screen)
@@ -580,10 +516,7 @@ func _build_map_screen() -> void:
 			map_selected.emit(idx))
 		card.add_child(play)
 
-	# Bouton ← retour vers l'écran précédent (AI screen)
 	map_screen.add_child(U.back_btn(func(): UIUtils.goto(map_screen, _ai_screen)))
-
-	# Bouton 🏠 retour direct au menu principal
 	var home_btn : Button = U.btn("🏠  " + U.lt("main_menu"), Vector2(U.WIN_W - 210, 658), Vector2(180, 38), 14)
 	home_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.10, 0.04, 0.18), U.C_PINK, 1, 8))
@@ -599,15 +532,10 @@ func _build_map_screen() -> void:
 func hide_map_screen() -> void:
 	if map_screen: map_screen.visible = false
 
-
-# =============================================================================
-#  OVERLAYS (Classement, Paramètres)
-# =============================================================================
 func _open_leaderboard() -> void:
 	_lb_filled = false
 	_open_overlay(U.lt("leaderboard"), U.C_PURPLE, func(scr: Panel):
 		_lb_scr = scr
-		# En-têtes : # / AGENT (pseudo) / LOGIN (username) / Wins / Losses (pas d'ELO en base)
 		var headers : Array[String] = ["#", U.lt("player_col"), "LOGIN", U.lt("wins"), U.lt("losses")]
 		for i in range(headers.size()):
 			scr.add_child(U.lbl(headers[i], Vector2(_lb_cols_x[i], 148), 13, U.C_PURPLE))
@@ -615,7 +543,6 @@ func _open_leaderboard() -> void:
 		div.color    = Color(U.C_PURPLE.r, U.C_PURPLE.g, U.C_PURPLE.b, 0.5)
 		div.position = Vector2(55, 168); div.size = Vector2(U.WIN_W - 110, 1)
 		scr.add_child(div)
-		# Zone scrollable des lignes (entre le séparateur y=168 et le bouton Back y≈658)
 		var sc := ScrollContainer.new()
 		sc.position               = Vector2(55, 184)
 		sc.custom_minimum_size    = Vector2(U.WIN_W - 110, 466)
@@ -626,17 +553,13 @@ func _open_leaderboard() -> void:
 		_lb_rows.add_theme_constant_override("separation", 0)
 		_lb_rows.custom_minimum_size = Vector2(U.WIN_W - 110, 0)
 		sc.add_child(_lb_rows)
-		# Ligne d'état provisoire
 		_lb_status = U.lbl(U.lt("lb_loading"), Vector2(55, 200), 14, U.C_GOLD)
 		scr.add_child(_lb_status)
-		# Branche la réception + lance la requête serveur
 		if not Matchmaker.leaderboard_received.is_connected(_on_leaderboard_received):
 			Matchmaker.leaderboard_received.connect(_on_leaderboard_received, CONNECT_ONE_SHOT)
 		Matchmaker.get_leaderboard()
-		# Fallback hors-ligne : si rien dans 4 s, on affiche au moins le joueur connecté
 		var timer := _parent.get_tree().create_timer(4.0)
 		timer.timeout.connect(_on_leaderboard_timeout, CONNECT_ONE_SHOT))
-
 
 func _on_leaderboard_received(players: Array) -> void:
 	if _lb_filled or not is_instance_valid(_lb_scr):
@@ -648,9 +571,7 @@ func _on_leaderboard_received(players: Array) -> void:
 	if _lb_status: _lb_status.queue_free()
 	_fill_leaderboard_rows(players)
 
-
 func _on_leaderboard_timeout() -> void:
-	# Pas de réponse serveur → on ne plante pas : on montre au moins le joueur connecté.
 	if _lb_filled or not is_instance_valid(_lb_scr):
 		return
 	_lb_filled = true
@@ -665,8 +586,6 @@ func _on_leaderboard_timeout() -> void:
 	}]
 	_fill_leaderboard_rows(me)
 
-
-# Remplit les lignes du tableau (données serveur ou fallback) dans le ScrollContainer.
 func _fill_leaderboard_rows(players: Array) -> void:
 	if not is_instance_valid(_lb_rows):
 		return
@@ -676,17 +595,15 @@ func _fill_leaderboard_rows(players: Array) -> void:
 			str(r + 1),
 			str(p.get("pseudo", "")),
 			str(p.get("username", "")),
-			str(int(p.get("wins", 0))),     # int → fini les 1.0 / 0.0
+			str(int(p.get("wins", 0))),     
 			str(int(p.get("losses", 0))),
 		]
 		var row := Control.new()
 		row.custom_minimum_size = Vector2(U.WIN_W - 110, 44)
 		for c in range(cells.size()):
-			# x relatif à l'origine du ScrollContainer (x=55)
 			row.add_child(U.lbl(cells[c], Vector2(_lb_cols_x[c] - 55, 8), 14,
 				U.C_GOLD if r == 0 else Color(0.88, 0.85, 0.92)))
 		_lb_rows.add_child(row)
-
 
 func _open_settings() -> void:
 	_open_overlay(U.lt("settings"), Color(0.55, 0.50, 0.75), func(scr: Panel):
@@ -736,7 +653,6 @@ func _open_settings() -> void:
 					DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED))
 			scr.add_child(db))
 
-
 func _open_overlay(title: String, col: Color, builder: Callable) -> void:
 	main_menu.visible = false
 	var scr : Panel = U.make_screen(true)
@@ -747,20 +663,12 @@ func _open_overlay(title: String, col: Color, builder: Callable) -> void:
 		scr.queue_free()
 		main_menu.visible = true))
 
-
-# =============================================================================
-#  COMPAT (écrans vides pour les getters de UI.gd)
-# =============================================================================
 func _build_compat_screens() -> void:
 	setup_screen      = U.make_screen(false); _parent.add_child(setup_screen)
 	mode_screen       = U.make_screen(false); _parent.add_child(mode_screen)
 	difficulty_screen = U.make_screen(false); _parent.add_child(difficulty_screen)
 	squad_screen      = U.make_screen(false); _parent.add_child(squad_screen)
 
-
-# =============================================================================
-#  Grille de fond
-# =============================================================================
 class _GridNode extends Node2D:
 	func _draw() -> void:
 		var col := Color(1.00, 0.20, 0.58, 0.04)

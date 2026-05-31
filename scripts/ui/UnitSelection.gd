@@ -1,49 +1,29 @@
 extends Node
 class_name UnitSelection
 
-# ─────────────────────────────────────────
-#  SIGNALS
-# ─────────────────────────────────────────
 signal selection_changed(selected_units: Array)
 
-# ─────────────────────────────────────────
-#  STATE
-# ─────────────────────────────────────────
-var selected_units : Array = []   # unités actuellement sélectionnées
-var local_player_id : int  = 1    # ID du joueur local (à set depuis le GameManager)
-
-# Rubber band selection (sélection par rectangle)
+var selected_units : Array = []  
+var local_player_id : int  = 1  
 var _is_dragging      : bool    = false
 var _drag_start       : Vector2 = Vector2.ZERO
 var _drag_end         : Vector2 = Vector2.ZERO
-
-# Groupes Ctrl+1 à Ctrl+9
 var _groups : Dictionary = {
 	1: [], 2: [], 3: [], 4: [], 5: [],
 	6: [], 7: [], 8: [], 9: []
 }
 
-# ─────────────────────────────────────────
-#  NODES
-# ─────────────────────────────────────────
-@onready var selection_rect : ColorRect = $SelectionRect   # rectangle visuel de sélection
+@onready var selection_rect : ColorRect = $SelectionRect  
 
-# ─────────────────────────────────────────
-#  INIT
-# ─────────────────────────────────────────
 func _ready() -> void:
 	if selection_rect:
 		selection_rect.visible = false
-		selection_rect.color   = Color(0.2, 0.8, 0.2, 0.15)   # vert transparent
+		selection_rect.color   = Color(0.2, 0.8, 0.2, 0.15) 
 
-# ─────────────────────────────────────────
-#  INPUT
-# ─────────────────────────────────────────
 func _input(_event: InputEvent) -> void:
 	return
 
 func _handle_mouse_input(event: InputEvent) -> void:
-	# Clic gauche — début de sélection ou sélection simple
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 
@@ -53,7 +33,6 @@ func _handle_mouse_input(event: InputEvent) -> void:
 				_drag_end    = mb.position
 				_is_dragging = false
 			else:
-				# Relâchement
 				if _is_dragging:
 					_finish_rubber_band_selection()
 				else:
@@ -62,16 +41,14 @@ func _handle_mouse_input(event: InputEvent) -> void:
 				if selection_rect:
 					selection_rect.visible = false
 
-		# Clic droit — déplacement des unités sélectionnées
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			_move_selected_units(mb.position)
 
-	# Mouvement souris — rubber band
 	if event is InputEventMouseMotion:
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			_drag_end = (event as InputEventMouseMotion).position
 			var drag_dist := _drag_start.distance_to(_drag_end)
-			if drag_dist > 5.0:   # seuil pour éviter les micro-drags
+			if drag_dist > 5.0:  
 				_is_dragging = true
 				_update_selection_rect()
 
@@ -81,7 +58,6 @@ func _handle_keyboard_input(event: InputEvent) -> void:
 
 	var key := event as InputEventKey
 
-	# Ctrl + 1-9 : assigner ou rappeler un groupe
 	if key.ctrl_pressed:
 		match key.keycode:
 			KEY_1: _assign_group(1)
@@ -94,7 +70,6 @@ func _handle_keyboard_input(event: InputEvent) -> void:
 			KEY_8: _assign_group(8)
 			KEY_9: _assign_group(9)
 	else:
-		# 1-9 sans Ctrl : sélectionner le groupe
 		match key.keycode:
 			KEY_1: _select_group(1)
 			KEY_2: _select_group(2)
@@ -107,15 +82,10 @@ func _handle_keyboard_input(event: InputEvent) -> void:
 			KEY_9: _select_group(9)
 			KEY_ESCAPE: deselect_all()
 
-		# Spells sur les unités sélectionnées
 		match key.keycode:
 			KEY_Q: _activate_spell_on_selected()
 
-# ─────────────────────────────────────────
-#  SÉLECTION SIMPLE (clic)
-# ─────────────────────────────────────────
 func _handle_single_click(click_pos: Vector2, shift_held: bool) -> void:
-	# Convertit la position écran en position monde
 	var space_state := get_viewport().get_world_2d().direct_space_state
 	var params      := PhysicsPointQueryParameters2D.new()
 	params.position  = get_viewport().get_canvas_transform().affine_inverse() * click_pos
@@ -131,25 +101,19 @@ func _handle_single_click(click_pos: Vector2, shift_held: bool) -> void:
 			break
 
 	if clicked_unit == null:
-		# Clic dans le vide = désélectionner tout
 		if not shift_held:
 			deselect_all()
 		return
 
 	if shift_held:
-		# Shift + clic = ajouter/retirer de la sélection
 		if selected_units.has(clicked_unit):
 			_remove_from_selection(clicked_unit)
 		else:
 			_add_to_selection(clicked_unit)
 	else:
-		# Clic simple = sélection exclusive
 		deselect_all()
 		_add_to_selection(clicked_unit)
 
-# ─────────────────────────────────────────
-#  RUBBER BAND SELECTION
-# ─────────────────────────────────────────
 func _update_selection_rect() -> void:
 	if not selection_rect:
 		return
@@ -183,9 +147,6 @@ func _screen_rect_to_world(screen_rect: Rect2) -> Rect2:
 	var bot_right  := transform * (screen_rect.position + screen_rect.size)
 	return Rect2(top_left, bot_right - top_left)
 
-# ─────────────────────────────────────────
-#  GESTION DE LA SÉLECTION
-# ─────────────────────────────────────────
 func _add_to_selection(unit: Node) -> void:
 	if selected_units.has(unit):
 		return
@@ -208,9 +169,6 @@ func deselect_all() -> void:
 	selected_units.clear()
 	selection_changed.emit(selected_units)
 
-# ─────────────────────────────────────────
-#  DÉPLACEMENT
-# ─────────────────────────────────────────
 func _move_selected_units(click_pos: Vector2) -> void:
 	if selected_units.is_empty():
 		return
@@ -218,7 +176,6 @@ func _move_selected_units(click_pos: Vector2) -> void:
 	var world_pos := get_viewport().get_canvas_transform().affine_inverse() * click_pos
 	var count     := selected_units.size()
 
-	# Formation : disposition en grille autour du point cible
 	for i in range(count):
 		var unit = selected_units[i]
 		if not is_instance_valid(unit):
@@ -227,12 +184,10 @@ func _move_selected_units(click_pos: Vector2) -> void:
 		unit.move_to(world_pos + offset)
 
 func _formation_offset(index: int, total: int) -> Vector2:
-	# Grille simple : max 5 par ligne
 	const SPACING : float = 40.0
 	const PER_ROW : int   = 5
 	var col := index % PER_ROW
 	var row := index / PER_ROW
-	# Centrage de la ligne
 	var row_count := mini(total - row * PER_ROW, PER_ROW)
 	var offset_x  := (col - (row_count - 1) / 2.0) * SPACING
 	var offset_y  := row * SPACING

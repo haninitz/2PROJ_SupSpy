@@ -106,7 +106,6 @@ func _owner_color(owner_id: int, main: Node = null) -> Color:
 	return C_NEUTRAL
 
 func _draw_camera_rect() -> void:
-	# Cherche la Camera2D active dans la scène
 	var camera : Camera2D = _find_active_camera()
 	if camera == null:
 		return

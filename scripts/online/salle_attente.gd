@@ -3,8 +3,6 @@ extends Control
 func _lt(key: String) -> String:
 	var u := get_node_or_null("/root/UIUtils")
 	return u.lt(key) if u and u.has_method("lt") else key
-
-# ── Couleurs ──────────────────────────────────────────────────────────────────
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)
 const C_PURPLE := Color(0.55, 0.15, 0.85)
@@ -16,13 +14,9 @@ var _slots_a    : VBoxContainer
 var _slots_b    : VBoxContainer
 var _btn_lancer : Button
 var _status     : Label
-
-# Garde-fou : l'hôte ne s'enregistre qu'une seule fois
 var _host_registered := false
-# Garde-fou : évite un double _leave_room
 var _leaving := false
 
-# ─────────────────────────────────────────────────────────────────────────────
 func _ready() -> void:
 	_build()
 	_btn_lancer.disabled = true
@@ -32,15 +26,10 @@ func _ready() -> void:
 	RoomManager.player_list_updated.connect(_on_list_updated)
 	RoomManager.room_full.connect(_on_room_full)
 	NetworkManager.player_disconnected.connect(_on_player_disconnected)
-	# Sécurité : si l'hôte disparaît sans signal player_disconnected
 	NetworkManager.host_disconnected.connect(_on_host_force_quit)
-	# Messages d'avancement de connexion (cold-start Render) — signal optionnel.
 	NetworkManager.connection_progress.connect(_on_connection_progress)
 
 	if GameConfig.is_host:
-		# NB : on n'enregistre PAS l'hôte ici — my_peer_id vaut encore 0 avant
-		# create_server(). L'enregistrement se fait dans _on_host_ws_ready(),
-		# une fois my_peer_id définitivement fixé à 1.
 		if multiplayer.multiplayer_peer == null:
 			_status.text = _lt("lobby_connecting_srv")
 			NetworkManager.connected_to_server.connect(_on_host_ws_ready, CONNECT_ONE_SHOT)
@@ -60,7 +49,6 @@ func _ready() -> void:
 		else:
 			NetworkManager.join_server("")
 
-# ── Enregistrement hôte (une seule fois) ─────────────────────────────────────
 func _register_host_once() -> void:
 	if _host_registered:
 		return
@@ -71,32 +59,23 @@ func _register_host_once() -> void:
 		GameConfig.map,       GameConfig.steam_name)
 	_refresh_slots()
 
-# ── Callbacks hôte ───────────────────────────────────────────────────────────
 func _on_host_ws_ready() -> void:
 	_status.text = _lt("lobby_waiting_agents") % GameConfig.get_max_players()
-	# Récupérer l'IP locale pour le Matchmaker
 	var local_ip := _get_local_ip()
-	# 1) Déclarer la room sur le matchmaker (action "create" en premier dans la file).
 	Matchmaker.create_room(
 		GameConfig.room_name,
 		local_ip,
 		GameConfig.format,
 		GameConfig.map,
 		GameConfig.get_max_players())
-	# 2) Enregistrer l'hôte localement APRÈS que my_peer_id == 1 (fixé par
-	#    create_server()). _refresh_slots() enverra ensuite l'action "update".
 	_register_host_once()
 
 func _on_host_ws_fail() -> void:
 	_status.text = _lt("lobby_server_fail")
 
-# ── Callbacks client ─────────────────────────────────────────────────────────
 func _on_client_ws_ready() -> void:
 	GameConfig.my_peer_id = multiplayer.get_unique_id()
 	_status.text = _lt("lobby_waiting_host_con")
-	# L'hôte n'est plus peer 1 (les deux sont clients du relay, IDs ≥ 2). Un RPC
-	# ciblé rpc_id(1) serait rejeté côté hôte (unique_id ≠ 1). On diffuse donc en
-	# broadcast : en 1v1, .rpc() atteint l'unique autre joueur (l'hôte).
 	_send_join_request()
 
 func _send_join_request() -> void:
@@ -109,16 +88,11 @@ func _send_join_request() -> void:
 func _on_connect_failed() -> void:
 	_status.text = _lt("lobby_conn_failed")
 
-# Avancement de connexion : n'écraser le statut que tant qu'on attend encore
-# la connexion (hôte avant enregistrement, ou client avant le join).
 func _on_connection_progress(message: String) -> void:
 	if not _host_registered or not GameConfig.is_host:
 		_status.text = message
 
-# ── Déconnexion d'un joueur ───────────────────────────────────────────────────
 func _on_player_disconnected(_peer_id: int) -> void:
-	# L'hôte n'est plus le peer 1 (les deux sont clients du relay, IDs ≥ 2). Côté
-	# client en 1v1, tout peer qui se déconnecte = l'hôte (l'unique autre joueur).
 	if not GameConfig.is_host:
 		_on_host_force_quit()
 		return
@@ -131,7 +105,6 @@ func _on_host_force_quit() -> void:
 	await get_tree().create_timer(1.5).timeout
 	_leave_room(false)
 
-# ── Nettoyage de la room ──────────────────────────────────────────────────────
 func _leave_room(do_disconnect: bool) -> void:
 	if _leaving:
 		return
@@ -145,13 +118,11 @@ func _leave_room(do_disconnect: bool) -> void:
 	GameConfig.reset()
 	SceneLoader.goto("res://scenes/online/OnlineMenu.tscn")
 
-# ── Sécurité fermeture forcée ─────────────────────────────────────────────────
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		if GameConfig.is_host and GameConfig.room_name != "" and not _leaving:
 			Matchmaker.delete_room(GameConfig.room_name)
 
-# ── UI callbacks ──────────────────────────────────────────────────────────────
 func _on_list_updated(_rid: String, _data: Array) -> void:
 	_update_labels()
 	_btn_lancer.visible = GameConfig.is_host
@@ -169,8 +140,6 @@ func _on_room_full(_rid: String) -> void:
 	_status.text = _lt("lobby_room_full")
 
 func _refresh_slots() -> void:
-	# Autorité hôte : le format de la room publiée fait foi. Évite qu'un
-	# GameConfig.format local périmé (ex. "2v2" résiduel) n'affiche trop de slots.
 	if GameConfig.is_host and RoomManager.rooms.has(GameConfig.room_name):
 		GameConfig.format = RoomManager.rooms[GameConfig.room_name].get("format", GameConfig.format)
 	for c in _slots_a.get_children(): c.queue_free()
@@ -216,7 +185,6 @@ func _on_lancer_pressed() -> void:
 func _on_quitter_pressed() -> void:
 	_leave_room(true)
 
-# ── Utilitaire IP locale ──────────────────────────────────────────────────────
 func _get_local_ip() -> String:
 	for addr in IP.get_local_addresses():
 		if addr.begins_with("10.") or addr.begins_with("192.168.") \
@@ -224,7 +192,6 @@ func _get_local_ip() -> String:
 			return addr
 	return "127.0.0.1"
 
-# ── Construction UI ───────────────────────────────────────────────────────────
 func _build() -> void:
 	var bg := ColorRect.new()
 	bg.color = C_BG; bg.size = Vector2(1152, 720); add_child(bg)

@@ -5,7 +5,7 @@ signal language_changed(lang_code: String)
 var current: String = "fr" :
 	set(val):
 		current = val
-		GameConfig.set_meta("lang", val)  # persiste entre scènes
+		GameConfig.set_meta("lang", val)  
 		language_changed.emit(val)
 
 const STRINGS = {
@@ -75,17 +75,14 @@ const STRINGS = {
 		"volume":         "Volume",
 		"msg_victory":    "VICTOIRE DE %s !",
 		"ai_vs_you":      "AI VS TOI",
-		# Play screen
 		"main_menu":      "Menu Principal",
 		"logout":         "⏏ Déconnexion",
 		"loading":        "Chargement",
 		"click_to_start": "CLIQUER POUR COMMENCER",
 		"lb_loading":     "Chargement…",
-		# Descriptions maps
 		"map1_desc":      "Urbain · Rivière · Pont",
 		"map2_desc":      "Forêt dense · Hauts revenus",
 		"map3_desc":      "Île · Océan · Ports",
-		# Pause menu
 		"pause_title":    "— PAUSE —",
 		"pause_sub":      "W.O.O.H.P · Mission en attente",
 		"pause_resume":   "▶  Reprendre",
@@ -103,16 +100,13 @@ const STRINGS = {
 		"ai_launch":      "→  LANCER",
 		"mp_desc":        "Joue en ligne · Crée ou rejoins une mission",
 		"mp_launch":      "→  EN MISSION",
-		# AI screen
 		"your_team":      "Ton équipe : ",
 		"ai_level_label": "Niveau de l'IA :",
-		# HUD
 		"players_title":  "— Joueurs —",
 		"eliminated":     "éliminé",
 		"units_selected": "✦  %d unité(s) sélectionnée(s)",
 		"stat_melee":     "mêlée",
 		"queue_empty_lbl":"file vide",
-		# Victory / Defeat
 		"won_victory":       "%s a remporté la victoire",
 		"territory_lost":    "Votre territoire a été perdu",
 		"agent_secured":     "L'agent a sécurisé tous les territoires",
@@ -129,7 +123,6 @@ const STRINGS = {
 		"stat_income_peak":  "💰  Revenu max",
 		"stat_units_lost":   "💀  Unités perdues",
 		"stat_winner":       "🏆  Vainqueur",
-		# Recap IA
 		"recap_title":      "✦  RÉCAP MISSION  ✦",
 		"recap_mode":       "Mode",
 		"recap_vs_ai":      "VS Intelligence Artificielle",
@@ -139,27 +132,23 @@ const STRINGS = {
 		"diff_easy_label":  "Recrue (Facile)",
 		"diff_med_label":   "Agente (Moyen)",
 		"diff_hard_label":  "Super Agente (Difficile)",
-		# Login
 		"login_badge":      "W.O.O.H.P · CONNEXION",
 		"login_title":      "✦  CONNEXION AGENT  ✦",
 		"login_username":   "Nom d'agent",
 		"login_password":   "Code secret",
 		"login_btn":        "→  ENTRER EN MISSION",
 		"login_register":   "Créer un compte agent",
-		# Salle d'attente
 		"lobby_title":      "✦  SALLE D'ATTENTE  ✦",
 		"lobby_team_a":     "✦ Équipe A",
 		"lobby_team_b":     "✦ Équipe B",
 		"lobby_launch":     "→  LANCER LA MISSION",
 		"lobby_quit":       "← Quitter la mission",
-		# Multi screen
 		"multi_title":      "MISSION EN LIGNE",
 		"your_agent":       "Ton agent : ",
 		"multi_create":     "✦  CRÉER UNE MISSION",
 		"multi_create_desc":"Héberge une partie — les autres agents pourront te rejoindre",
 		"multi_join":       "⟳  REJOINDRE UNE MISSION",
 		"multi_join_desc":  "Parcours les missions disponibles et rejoins une partie",
-		# Format screen
 		"format_title":     "✦  FORMAT DE MISSION  ✦",
 		"format_1v1":       "✦  1 VS 1  —  Duel d'agentes",
 		"format_1v1_desc":  "Face à face — la mission la plus intense",
@@ -167,16 +156,13 @@ const STRINGS = {
 		"format_2v2_desc":  "Coordonne-toi avec ton équipière",
 		"format_3v3":       "✦  3 VS 3  —  Guerre totale",
 		"format_3v3_desc":  "Le plus grand affrontement W.O.O.H.P",
-		# Choix map online
 		"choixmap_title":   "✦  CHOISIR LA MAP  ✦",
 		"omap1_desc":       "Île luxueuse avec boutiques",
 		"omap2_desc":       "Bases tech dans la jungle",
 		"omap3_desc":       "Archipel avec ports navals",
-		# Nom room
 		"nomroom_title":    "✦  NOM DE LA MISSION  ✦",
 		"nomroom_label":    "Nom de la room",
 		"nomroom_launch":   "→  LANCER LA MISSION",
-		# Liste rooms
 		"listrooms_title":   "✦  REJOINDRE UNE MISSION  ✦",
 		"listrooms_refresh": "⟳  Actualiser",
 		"listrooms_loading": "Chargement des missions…",
@@ -184,7 +170,6 @@ const STRINGS = {
 		"listrooms_count":   "%d mission(s) disponible(s)",
 		"listrooms_players": "joueurs",
 		"listrooms_full":    "PLEINE",
-		# Salle d'attente — statuts
 		"lobby_all_ready":   "Tout le monde est là !",
 		"lobby_waiting":     "En attente… %d/%d",
 		"lobby_waiting_host":"En attente du lancement… %d/%d",
@@ -197,7 +182,6 @@ const STRINGS = {
 		"lobby_waiting_host_con": "Connecté — en attente de l'hôte…",
 		"lobby_join_sent":        "Demande d'accès envoyée…",
 		"lobby_conn_failed":      "Connexion au serveur échouée. Réessaie.",
-		# Register
 		"reg_badge":         "W.O.O.H.P · RECRUTEMENT",
 		"reg_title":         "✦  NOUVELLE AGENTE  ✦",
 		"reg_username":      "Nom d'utilisateur",
@@ -212,16 +196,13 @@ const STRINGS = {
 		"err_name_short":    "Nom trop court (min 3 caractères) !",
 		"err_pass_short":    "Mot de passe trop court (min 6) !",
 		"err_pass_mismatch": "Les mots de passe ne correspondent pas !",
-		# Choix mode
 		"choixmode_title":   "MODE DE MISSION",
 		"choixmode_multi":   "MULTIJOUEUR EN LIGNE",
 		"choixmode_desc":    "Affronte des agents du monde entier",
-		# Status connexion rooms
 		"listrooms_connecting": "Connexion à '%s'…",
 		"listrooms_connected":  "Connecté !",
 		"listrooms_timeout":    "Le serveur ne répond pas — réessaie",
 		"listrooms_notfound":   "Room introuvable !",
-		# Status nom_room
 		"nomroom_err_empty":    "Entre un nom de mission !",
 		"nomroom_err_short":    "Minimum 3 caractères !",
 		"nomroom_err_long":     "Nom trop long (20 max) !",
@@ -297,17 +278,14 @@ const STRINGS = {
 		"volume":         "Volume",
 		"msg_victory":    "%s WINS!",
 		"ai_vs_you":      "AI VS YOU",
-		# Play screen
 		"main_menu":      "Main Menu",
 		"logout":         "⏏ Logout",
 		"loading":        "Loading",
 		"click_to_start": "CLICK TO START",
 		"lb_loading":     "Loading…",
-		# Map descriptions
 		"map1_desc":      "Urban · River · Bridge",
 		"map2_desc":      "Dense forest · High income",
 		"map3_desc":      "Island · Ocean · Ports",
-		# Pause menu
 		"pause_title":    "— PAUSE —",
 		"pause_sub":      "W.O.O.H.P · Mission on hold",
 		"pause_resume":   "▶  Resume",
@@ -325,16 +303,13 @@ const STRINGS = {
 		"ai_launch":      "→  LAUNCH",
 		"mp_desc":        "Play online · Create or join a mission",
 		"mp_launch":      "→  ON MISSION",
-		# AI screen
 		"your_team":      "Your team: ",
 		"ai_level_label": "AI Level:",
-		# HUD
 		"players_title":  "— Players —",
 		"eliminated":     "eliminated",
 		"units_selected": "✦  %d unit(s) selected",
 		"stat_melee":     "melee",
 		"queue_empty_lbl":"empty queue",
-		# Victory / Defeat
 		"won_victory":       "%s has won the victory",
 		"territory_lost":    "Your territory has been lost",
 		"agent_secured":     "Agent has secured all territories",
@@ -351,7 +326,6 @@ const STRINGS = {
 		"stat_income_peak":  "💰  Peak income",
 		"stat_units_lost":   "💀  Units lost",
 		"stat_winner":       "🏆  Winner",
-		# Recap IA
 		"recap_title":      "✦  MISSION RECAP  ✦",
 		"recap_mode":       "Mode",
 		"recap_vs_ai":      "VS Artificial Intelligence",
@@ -361,27 +335,23 @@ const STRINGS = {
 		"diff_easy_label":  "Recruit (Easy)",
 		"diff_med_label":   "Agent (Medium)",
 		"diff_hard_label":  "Super Agent (Hard)",
-		# Login
 		"login_badge":      "W.O.O.H.P · CONNECTION",
 		"login_title":      "✦  AGENT LOGIN  ✦",
 		"login_username":   "Agent name",
 		"login_password":   "Secret code",
 		"login_btn":        "→  ENTER MISSION",
 		"login_register":   "Create agent account",
-		# Salle d'attente
 		"lobby_title":      "✦  WAITING ROOM  ✦",
 		"lobby_team_a":     "✦ Team A",
 		"lobby_team_b":     "✦ Team B",
 		"lobby_launch":     "→  LAUNCH MISSION",
 		"lobby_quit":       "← Leave mission",
-		# Multi screen
 		"multi_title":      "ONLINE MISSION",
 		"your_agent":       "Your agent: ",
 		"multi_create":     "✦  CREATE A MISSION",
 		"multi_create_desc":"Host a game — other agents can join you",
 		"multi_join":       "⟳  JOIN A MISSION",
 		"multi_join_desc":  "Browse available missions and join a game",
-		# Format screen
 		"format_title":     "✦  MISSION FORMAT  ✦",
 		"format_1v1":       "✦  1 VS 1  —  Agent Duel",
 		"format_1v1_desc":  "Face to face — the most intense mission",
@@ -389,16 +359,13 @@ const STRINGS = {
 		"format_2v2_desc":  "Coordinate with your teammate",
 		"format_3v3":       "✦  3 VS 3  —  Total War",
 		"format_3v3_desc":  "The greatest W.O.O.H.P confrontation",
-		# Online map selection
 		"choixmap_title":   "✦  CHOOSE MAP  ✦",
 		"omap1_desc":       "Luxury island with shops",
 		"omap2_desc":       "Tech bases in the jungle",
 		"omap3_desc":       "Archipelago with naval ports",
-		# Room name
 		"nomroom_title":    "✦  MISSION NAME  ✦",
 		"nomroom_label":    "Room name",
 		"nomroom_launch":   "→  LAUNCH MISSION",
-		# Room list
 		"listrooms_title":   "✦  JOIN A MISSION  ✦",
 		"listrooms_refresh": "⟳  Refresh",
 		"listrooms_loading": "Loading missions…",
@@ -406,7 +373,6 @@ const STRINGS = {
 		"listrooms_count":   "%d mission(s) available",
 		"listrooms_players": "players",
 		"listrooms_full":    "FULL",
-		# Lobby status
 		"lobby_all_ready":   "Everyone is here!",
 		"lobby_waiting":     "Waiting… %d/%d",
 		"lobby_waiting_host":"Waiting for launch… %d/%d",
@@ -419,7 +385,6 @@ const STRINGS = {
 		"lobby_waiting_host_con": "Connected — waiting for host…",
 		"lobby_join_sent":        "Join request sent…",
 		"lobby_conn_failed":      "Connection to server failed. Try again.",
-		# Register
 		"reg_badge":         "W.O.O.H.P · RECRUITMENT",
 		"reg_title":         "✦  NEW AGENT  ✦",
 		"reg_username":      "Username",
@@ -434,16 +399,13 @@ const STRINGS = {
 		"err_name_short":    "Name too short (min 3 chars)!",
 		"err_pass_short":    "Password too short (min 6)!",
 		"err_pass_mismatch": "Passwords do not match!",
-		# Choix mode
 		"choixmode_title":   "MISSION MODE",
 		"choixmode_multi":   "ONLINE MULTIPLAYER",
 		"choixmode_desc":    "Challenge agents from around the world",
-		# Room connection status
 		"listrooms_connecting": "Connecting to '%s'…",
 		"listrooms_connected":  "Connected!",
 		"listrooms_timeout":    "Server not responding — try again",
 		"listrooms_notfound":   "Room not found!",
-		# Room name status
 		"nomroom_err_empty":    "Enter a mission name!",
 		"nomroom_err_short":    "Minimum 3 characters!",
 		"nomroom_err_long":     "Name too long (20 max)!",
@@ -519,17 +481,14 @@ const STRINGS = {
 		"volume":         "Volumen",
 		"msg_victory":    "¡%s GANA!",
 		"ai_vs_you":      "IA VS TÚ",
-		# Play screen
 		"main_menu":      "Menú Principal",
 		"logout":         "⏏ Cerrar sesión",
 		"loading":        "Cargando",
 		"click_to_start": "CLIC PARA EMPEZAR",
 		"lb_loading":     "Cargando…",
-		# Descripciones mapas
 		"map1_desc":      "Urbano · Río · Puente",
 		"map2_desc":      "Bosque denso · Altos ingresos",
 		"map3_desc":      "Isla · Océano · Puertos",
-		# Pause menu
 		"pause_title":    "— PAUSA —",
 		"pause_sub":      "W.O.O.H.P · Misión en espera",
 		"pause_resume":   "▶  Reanudar",
@@ -547,16 +506,13 @@ const STRINGS = {
 		"ai_launch":      "→  LANZAR",
 		"mp_desc":        "Juega en línea · Crea o únete a una misión",
 		"mp_launch":      "→  EN MISIÓN",
-		# AI screen
 		"your_team":      "Tu equipo: ",
 		"ai_level_label": "Nivel de IA:",
-		# HUD
 		"players_title":  "— Jugadores —",
 		"eliminated":     "eliminado",
 		"units_selected": "✦  %d unidad(es) seleccionada(s)",
 		"stat_melee":     "cuerpo a cuerpo",
 		"queue_empty_lbl":"cola vacía",
-		# Victory / Defeat
 		"won_victory":       "%s ha ganado la victoria",
 		"territory_lost":    "Tu territorio ha sido perdido",
 		"agent_secured":     "El agente ha asegurado todos los territorios",
@@ -573,7 +529,6 @@ const STRINGS = {
 		"stat_income_peak":  "💰  Ingresos máx.",
 		"stat_units_lost":   "💀  Unidades perdidas",
 		"stat_winner":       "🏆  Ganador",
-		# Recap IA
 		"recap_title":      "✦  RESUMEN MISIÓN  ✦",
 		"recap_mode":       "Modo",
 		"recap_vs_ai":      "VS Inteligencia Artificial",
@@ -583,27 +538,23 @@ const STRINGS = {
 		"diff_easy_label":  "Recluta (Fácil)",
 		"diff_med_label":   "Agente (Medio)",
 		"diff_hard_label":  "Super Agente (Difícil)",
-		# Login
 		"login_badge":      "W.O.O.H.P · CONEXIÓN",
 		"login_title":      "✦  LOGIN AGENTE  ✦",
 		"login_username":   "Nombre de agente",
 		"login_password":   "Código secreto",
 		"login_btn":        "→  ENTRAR EN MISIÓN",
 		"login_register":   "Crear cuenta de agente",
-		# Salle d'attente
 		"lobby_title":      "✦  SALA DE ESPERA  ✦",
 		"lobby_team_a":     "✦ Equipo A",
 		"lobby_team_b":     "✦ Equipo B",
 		"lobby_launch":     "→  LANZAR MISIÓN",
 		"lobby_quit":       "← Abandonar misión",
-		# Multi screen
 		"multi_title":      "MISIÓN EN LÍNEA",
 		"your_agent":       "Tu agente: ",
 		"multi_create":     "✦  CREAR UNA MISIÓN",
 		"multi_create_desc":"Aloja una partida — otros agentes podrán unirse",
 		"multi_join":       "⟳  UNIRSE A UNA MISIÓN",
 		"multi_join_desc":  "Explora las misiones disponibles y únete",
-		# Format screen
 		"format_title":     "✦  FORMATO DE MISIÓN  ✦",
 		"format_1v1":       "✦  1 VS 1  —  Duelo de agentes",
 		"format_1v1_desc":  "Cara a cara — la misión más intensa",
@@ -611,16 +562,13 @@ const STRINGS = {
 		"format_2v2_desc":  "Coordínate con tu compañera",
 		"format_3v3":       "✦  3 VS 3  —  Guerra total",
 		"format_3v3_desc":  "El mayor enfrentamiento W.O.O.H.P",
-		# Selección mapa online
 		"choixmap_title":   "✦  ELEGIR MAPA  ✦",
 		"omap1_desc":       "Isla de lujo con tiendas",
 		"omap2_desc":       "Bases tech en la jungla",
 		"omap3_desc":       "Archipiélago con puertos navales",
-		# Nombre de room
 		"nomroom_title":    "✦  NOMBRE DE MISIÓN  ✦",
 		"nomroom_label":    "Nombre de la sala",
 		"nomroom_launch":   "→  LANZAR MISIÓN",
-		# Lista de salas
 		"listrooms_title":   "✦  UNIRSE A UNA MISIÓN  ✦",
 		"listrooms_refresh": "⟳  Actualizar",
 		"listrooms_loading": "Cargando misiones…",
@@ -628,7 +576,6 @@ const STRINGS = {
 		"listrooms_count":   "%d misión/misiones disponible(s)",
 		"listrooms_players": "jugadores",
 		"listrooms_full":    "LLENA",
-		# Estado sala de espera
 		"lobby_all_ready":   "¡Todo el mundo está aquí!",
 		"lobby_waiting":     "Esperando… %d/%d",
 		"lobby_waiting_host":"Esperando lanzamiento… %d/%d",
@@ -641,7 +588,6 @@ const STRINGS = {
 		"lobby_waiting_host_con": "Conectado — esperando al anfitrión…",
 		"lobby_join_sent":        "Solicitud de acceso enviada…",
 		"lobby_conn_failed":      "Conexión al servidor fallida. Inténtalo de nuevo.",
-		# Registro
 		"reg_badge":         "W.O.O.H.P · RECLUTAMIENTO",
 		"reg_title":         "✦  NUEVA AGENTE  ✦",
 		"reg_username":      "Nombre de usuario",
@@ -656,16 +602,13 @@ const STRINGS = {
 		"err_name_short":    "¡Nombre muy corto (mín. 3 caracteres)!",
 		"err_pass_short":    "¡Contraseña muy corta (mín. 6)!",
 		"err_pass_mismatch": "¡Las contraseñas no coinciden!",
-		# Modo de misión
 		"choixmode_title":   "MODO DE MISIÓN",
 		"choixmode_multi":   "MULTIJUGADOR EN LÍNEA",
 		"choixmode_desc":    "Desafía agentes de todo el mundo",
-		# Estado salas
 		"listrooms_connecting": "Conectando a '%s'…",
 		"listrooms_connected":  "¡Conectado!",
 		"listrooms_timeout":    "El servidor no responde — inténtalo de nuevo",
 		"listrooms_notfound":   "¡Sala no encontrada!",
-		# Estado nombre sala
 		"nomroom_err_empty":    "¡Introduce un nombre de misión!",
 		"nomroom_err_short":    "¡Mínimo 3 caracteres!",
 		"nomroom_err_long":     "¡Nombre demasiado largo (máx. 20)!",
@@ -676,12 +619,9 @@ const STRINGS = {
 	}
 }
 
-
 func _ready() -> void:
-	# Restaure la langue sauvegardée dans GameConfig (persiste entre scènes)
 	if GameConfig.has_meta("lang"):
 		current = GameConfig.get_meta("lang")
-
 
 func t(key: String) -> String:
 	var lang_dict : Dictionary = STRINGS.get(current, STRINGS["fr"])

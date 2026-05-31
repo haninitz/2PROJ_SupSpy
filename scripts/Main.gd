@@ -24,7 +24,7 @@ const ADVANCED_LAND_UNITS := ["heavy", "anti_armor", "mortar"]
 const SEA_UNITS := ["spy_yacht", "woohp_cruiser", "shadow_vessel"]
 
 var _camps          : Array = []   
-var camps           : Array :   #pour la minimap
+var camps           : Array :  
 	get: return _camps
 var _gold           : Array = [0, 100000, 150]  
 var local_player_id: int = 1

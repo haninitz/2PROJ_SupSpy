@@ -1,5 +1,4 @@
 extends Control
-# liste_rooms.gd — SupKonQuest · Totally Spies
 
 func _lt(key: String) -> String:
 	var u := get_node_or_null("/root/UIUtils")
@@ -15,8 +14,6 @@ const C_WHITE  := Color(1.00, 1.00, 1.00)
 var _status    : Label
 var _room_list : VBoxContainer
 var _all_rooms : Array = []
-
-# Garde-fou : une seule tentative de connexion en vol (Fix C).
 var _joining := false
 
 const REFRESH_DELAY := 5.0
@@ -28,13 +25,10 @@ func _ready() -> void:
 	Matchmaker.room_not_found.connect(_on_room_not_found)
 	NetworkManager.connected_to_server.connect(_on_connected, CONNECT_ONE_SHOT)
 	NetworkManager.connection_failed.connect(_on_connection_fail, CONNECT_ONE_SHOT)
-	# Messages d'avancement (cold-start Render) — signal optionnel.
 	NetworkManager.connection_progress.connect(_on_connection_progress)
 	_refresh()
 
 func _process(delta: float) -> void:
-	# Pas de rafraîchissement de liste pendant une connexion en cours
-	# (éviter de détruire les boutons sous le clic et de perturber l'UI).
 	if _joining:
 		return
 	_refresh_timer += delta
@@ -113,8 +107,6 @@ func _on_list_received(rooms: Array) -> void:
 func _populate_list(rooms: Array) -> void:
 	for c in _room_list.get_children(): c.queue_free()
 
-	# On masque uniquement les parties déjà lancées (les pleines restent
-	# affichées mais grisées).
 	var visibles := rooms.filter(func(r): return not r.get("started", false))
 
 	if visibles.is_empty():
@@ -132,11 +124,8 @@ func _populate_list(rooms: Array) -> void:
 		var mode   : String = room.get("mode",        "multi")
 		var diff   : String = room.get("diff",        "med")
 		var ip     : String = room.get("ip",          "127.0.0.1")
-
-		# Pleine ou non (calcul local, indépendant du champ "full" du serveur).
 		var is_full : bool = Matchmaker.is_room_full(room)
 		var col : Color = Color(0.45, 0.30, 0.40) if is_full else C_PINK
-
 		var btn := Button.new()
 		btn.text = "✦  %s  |  %s  |  %s  |  %d/%d %s%s" % [
 			rname, map_n.to_upper(), fmt, plrs, maxp,
@@ -158,7 +147,6 @@ func _populate_list(rooms: Array) -> void:
 
 func _join_room(room_name: String, map: String, format: String,
 		mode: String, diff: String, ip: String) -> void:
-	# Fix C : ignorer les reclics tant qu'une connexion est en cours.
 	if _joining:
 		return
 	_joining = true
@@ -170,11 +158,10 @@ func _join_room(room_name: String, map: String, format: String,
 	GameConfig.mode      = mode
 	GameConfig.diff      = diff
 	GameConfig.is_host   = false
-	GameConfig.server_ip = ip     # IP ENet de l'hôte (depuis le Matchmaker)
+	GameConfig.server_ip = ip     
 
 	NetworkManager.reset_connection()
 
-	# Reconnexion des signaux one-shot pour cette tentative
 	if not NetworkManager.connected_to_server.is_connected(_on_connected):
 		NetworkManager.connected_to_server.connect(_on_connected, CONNECT_ONE_SHOT)
 	if not NetworkManager.connection_failed.is_connected(_on_connection_fail):
@@ -193,7 +180,6 @@ func _on_connection_fail() -> void:
 	_status.text = _lt("listrooms_timeout")
 
 func _on_connection_progress(message: String) -> void:
-	# N'afficher l'avancement que pendant une tentative de join active.
 	if _joining:
 		_status.text = message
 

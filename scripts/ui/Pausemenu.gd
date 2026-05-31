@@ -55,7 +55,6 @@ func _build() -> void:
 		{"key": "pause_resume",  "col": U.C_PINK,              "fn": func(): resume(),         "ref": "_btn_resume"},
 		{"key": "pause_options", "col": U.C_CYAN,              "fn": func(): _open_options(),  "ref": "_btn_options"},
 		{"key": "pause_menu",    "col": U.C_GOLD,              "fn": func(): _go_to_menu(),    "ref": "_btn_menu"},
-		#{"key": "pause_quit",    "col": Color(0.70, 0.20, 0.20),"fn": func(): get_tree().quit(),"ref": "_btn_quit"},
 		{"key": "pause_quit", "col": Color(0.70, 0.20, 0.20), "fn": func(): _quit_game(), "ref": "_btn_quit"},
 	]
 

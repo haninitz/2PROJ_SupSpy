@@ -1,5 +1,4 @@
 extends Control
-# choix_mode.gd — SupKonQuest · Totally Spies
 
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)

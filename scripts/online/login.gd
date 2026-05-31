@@ -1,5 +1,4 @@
 extends Control
-# login.gd — SupKonQuest · Totally Spies Online
 
 func _lt(key: String) -> String:
 	var u := get_node_or_null("/root/UIUtils")
@@ -32,7 +31,6 @@ func _build() -> void:
 	bg.color = C_BG; bg.size = Vector2(1152, 720)
 	add_child(bg)
 
-	# Étoiles décoratives
 	for i in range(18):
 		var s := Label.new()
 		s.text = ["✦","✧","★","◆"][i % 4]
@@ -48,7 +46,6 @@ func _build() -> void:
 	panel.add_theme_stylebox_override("panel", _flat(C_BG, C_PINK, 2, 14))
 	add_child(panel)
 
-	# Badge
 	var badge := Label.new()
 	badge.text = _lt("login_badge")
 	badge.position = Vector2(0, 22); badge.size = Vector2(440, 22)

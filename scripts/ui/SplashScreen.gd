@@ -1,8 +1,4 @@
 extends CanvasLayer
-# =============================================================================
-#  SplashScreen.gd -- SupSpy
-#  Ecran de demarrage pixel art + titre scintillant
-# =============================================================================
 
 signal splash_finished
 
@@ -16,15 +12,12 @@ var _scanlines : Node2D
 var _ready_to_continue : bool = false
 var _t : float = 0.0
 
-
 func _ready() -> void:
 	layer = 99
 	_build()
 	_animate_in()
 
-
 func _build() -> void:
-	# Image de fond
 	_bg             = TextureRect.new()
 	_bg.texture     = load(IMG_PATH)
 	_bg.stretch_mode = TextureRect.STRETCH_SCALE
@@ -32,27 +25,21 @@ func _build() -> void:
 	_bg.position    = Vector2.ZERO
 	add_child(_bg)
 
-	# Overlay sombre
 	var dark := ColorRect.new()
 	dark.color    = Color(0.0, 0.0, 0.08, 0.50)
 	dark.size     = Vector2(1152, 720)
 	dark.position = Vector2.ZERO
 	add_child(dark)
 
-	# Scanlines
 	_scanlines = _ScanlinesNode.new()
 	add_child(_scanlines)
 
-	# Overlay fade
 	_overlay          = ColorRect.new()
 	_overlay.color    = Color(0, 0, 0, 1.0)
 	_overlay.size     = Vector2(1152, 720)
 	_overlay.position = Vector2.ZERO
 	add_child(_overlay)
 
-
-
-	# Ombre du titre
 	var shadow : Label = Label.new()
 	shadow.text     = "SUPSPY"
 	shadow.position = Vector2(8, 238)
@@ -63,7 +50,6 @@ func _build() -> void:
 	shadow.modulate.a = 0.0
 	add_child(shadow)
 
-	# Glow (layer intermediaire)
 	var glow : Label = Label.new()
 	glow.text     = "SUPSPY"
 	glow.position = Vector2(0, 228)
@@ -74,7 +60,6 @@ func _build() -> void:
 	glow.modulate.a = 0.0
 	add_child(glow)
 
-	# Titre principal
 	_title          = Label.new()
 	_title.text     = "SUPSPY"
 	_title.position = Vector2(0, 230)
@@ -85,11 +70,9 @@ func _build() -> void:
 	_title.modulate.a = 0.0
 	add_child(_title)
 
-	# Fade in shadow et glow avec le titre
 	shadow.set_meta("fade_with_title", true)
 	glow.set_meta("fade_with_title", true)
 
-	# Ligne decorative
 	var line := ColorRect.new()
 	line.color    = Color(1.0, 0.20, 0.58, 0.70)
 	line.position = Vector2(1152.0/2.0 - 160, 368)
@@ -101,9 +84,8 @@ func _build() -> void:
 	line2.size     = Vector2(320, 1)
 	add_child(line2)
 
-	# Badge SUPINFO
 	var badge := Label.new()
-	badge.text     = "SUPINFO"
+	badge.text     = "Hanitea | Dalila | Paola | Asma"
 	badge.position = Vector2(0, 385)
 	badge.size     = Vector2(1152, 22)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -112,7 +94,6 @@ func _build() -> void:
 	badge.modulate.a = 0.0
 	add_child(badge)
 
-	# Prompt
 	_prompt          = Label.new()
 	var _u := get_node_or_null("/root/UIUtils")
 	_prompt.text     = _u.lt("click_to_start") if _u else "CLICK TO START"
@@ -124,9 +105,7 @@ func _build() -> void:
 	_prompt.modulate.a = 0.0
 	add_child(_prompt)
 
-	# Stocker les labels pour le fade
 	badge.set_meta("fade_target", 1.0)
-
 
 func _animate_in() -> void:
 	var tween : Tween = create_tween()
@@ -137,7 +116,6 @@ func _animate_in() -> void:
 		if child is Label and child.has_meta("fade_with_title"):
 			tween.tween_property(child, "modulate:a", 1.0, 1.0).set_delay(1.2)
 	tween.tween_callback(func(): _ready_to_continue = true).set_delay(2.8)
-	# Fade in autres elements
 	for child in get_children():
 		if child is Label and child != _title and child != _prompt and child != _overlay:
 			tween.tween_property(child, "modulate:a", 1.0, 0.8).set_delay(1.8)
@@ -148,16 +126,13 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _scanlines:
 		_scanlines.queue_redraw()
-	# Scintillement du titre
 	if _title and _title.modulate.a > 0.5:
 		var flicker : float = 1.0
 		if fmod(_t, 4.0) > 3.7:
 			flicker = 0.6 + sin(_t * 40.0) * 0.4
 		_title.modulate = Color(flicker, flicker * 0.20, flicker * 0.58)
-	# Pulsation prompt
 	if _ready_to_continue and _prompt:
 		_prompt.modulate.a = 0.4 + sin(_t * 2.5) * 0.6
-
 
 func _input(event: InputEvent) -> void:
 	if not _ready_to_continue:
@@ -165,20 +140,16 @@ func _input(event: InputEvent) -> void:
 	if (event is InputEventMouseButton or event is InputEventKey) and event.pressed:
 		_finish()
 
-
 func _finish() -> void:
 	_ready_to_continue = false
 	var tween : Tween = create_tween()
 	tween.tween_property(_overlay, "color:a", 1.0, 0.5)
 	tween.tween_callback(_on_fade_done)
 
-
 func _on_fade_done() -> void:
 	splash_finished.emit()
 	queue_free()
 
-
-# Scanlines Node2D interne
 class _ScanlinesNode extends Node2D:
 	func _draw() -> void:
 		var y : int = 0

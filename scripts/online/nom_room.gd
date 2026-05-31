@@ -1,5 +1,4 @@
 extends Control
-# nom_room.gd — SupKonQuest · Totally Spies
 
 func _lt(key: String) -> String:
 	var u := get_node_or_null("/root/UIUtils")
@@ -58,14 +57,8 @@ func _on_create_pressed() -> void:
 	GameConfig.mode      = "multi"
 	_btn_create.disabled = true
 	_status.text         = _lt("nomroom_registering")
-
-	# Nettoyer toute connexion résiduelle via NetworkManager pour garder
-	# _peer et multiplayer.multiplayer_peer synchronisés (évite le désync).
 	NetworkManager.reset_connection()
 	await get_tree().create_timer(0.15).timeout
-
-	# Étape 1 : enregistrer sur le matchmaker (rapide)
-	# La connexion au serveur de jeu se fait en salle d'attente
 	var local_ip := "127.0.0.1"
 	for addr in IP.get_local_addresses():
 		if addr.begins_with("192.168.") or addr.begins_with("10.") or addr.begins_with("172."):
@@ -76,7 +69,6 @@ func _on_create_pressed() -> void:
 		GameConfig.format, GameConfig.map,
 		GameConfig.get_max_players())
 
-	# Timeout 12s si le matchmaker ne répond pas
 	await get_tree().create_timer(12.0).timeout
 	if is_inside_tree() and _status.text == "Enregistrement de la room…":
 		_status.text         = _lt("nomroom_timeout")
@@ -84,13 +76,7 @@ func _on_create_pressed() -> void:
 
 func _on_room_registered(_room_name: String) -> void:
 	_status.text = _lt("nomroom_created")
-	# NB : on n'enregistre PAS l'hôte ici. my_peer_id vaut encore 0 avant
-	# create_server() ; l'enregistrer maintenant créerait un slot fantôme
-	# (Joueur 0) en plus du vrai (Joueur 1). L'enregistrement se fait
-	# uniquement en salle d'attente, une fois my_peer_id fixé à 1.
-	# Lancer la connexion WebSocket en arrière-plan (fixe my_peer_id = 1)
 	NetworkManager.create_server()
-	# Aller en salle d'attente immédiatement sans attendre la connexion
 	SceneLoader.goto("res://scenes/online/SalleAttente.tscn")
 
 func _on_matchmaker_error() -> void:

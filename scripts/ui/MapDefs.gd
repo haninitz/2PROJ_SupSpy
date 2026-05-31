@@ -2,7 +2,7 @@ extends Node
 
 const MAPS : Array = [
 
-	# ── Carte 1 : Beverly Hills (Clover) ─────────────────────────────────────
+	# Carte 1 : Beverly Hills (Clover)
 	{
 		"name"      : "Beverly Hills (Clover)",
 		"has_water" : false,
@@ -94,7 +94,7 @@ const MAPS : Array = [
 		]
 	},
 
-	# ── Carte 2 : Jungle Techno (Sam) ────────────────────────────────────────
+	# Carte 2 : Jungle Techno (Sam)
 	{
 		"name"      : "Jungle Techno (Sam)",
 		"has_water" : false,
@@ -175,7 +175,7 @@ const MAPS : Array = [
 		]
 	},
 
-	# ── Carte 3 : Île Tropicale (Alex) ───────────────────────────────────────
+	#Carte 3 : Île Tropicale (Alex) 
 	{
 		"name"      : "Île Tropicale (Alex)",
 		"has_water" : true,

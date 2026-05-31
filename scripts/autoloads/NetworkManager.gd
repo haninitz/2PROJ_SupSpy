@@ -16,8 +16,8 @@ var _connected_room : String = ""
 const CONNECT_TIMEOUT := 20.0
 var _connecting      := false
 var _connect_elapsed := 0.0
-const HEARTBEAT_INTERVAL : float = 0.5   # l'hôte envoie un ping toutes les 0.5 s
-const HOST_TIMEOUT       : float = 2.0   # client : aucun ping pendant 2 s = hôte parti
+const HEARTBEAT_INTERVAL : float = 0.5   
+const HOST_TIMEOUT       : float = 2.0 
 var _heartbeat_send_t : float = 0.0
 var _heartbeat_recv_t : float = 0.0
 var _watch_host       : bool  = false
