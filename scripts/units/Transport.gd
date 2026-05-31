@@ -16,7 +16,6 @@ func _ready() -> void:
 	price        = 100
 	super._ready()
 
-# Embarque une unité terrestre dans le transport
 func embarquer(unit: Unit) -> bool:
 	if unites_embarquees.size() >= capacite_max:
 		return false
@@ -26,7 +25,6 @@ func embarquer(unit: Unit) -> bool:
 	unit.hide()            
 	return true
 
-# Débarque toutes les unités à destination
 func debarquer() -> void:
 	for unit in unites_embarquees:
 		if is_instance_valid(unit):

@@ -38,7 +38,6 @@ func activate_spell() -> void:
 	_spell_active = true
 	_spell_ready  = false
 	_spell_timer  = BOOST_DURATION
-	# Booste toutes les unités alliées proches
 	for unit in get_tree().get_nodes_in_group("units"):
 		if unit is Unit and unit.owner_id == owner_id and unit != self:
 			var dist : float = global_position.distance_to(unit.global_position)
@@ -49,7 +48,6 @@ func activate_spell() -> void:
 func _deactivate_boost() -> void:
 	_spell_active = false
 	_spell_timer  = BOOST_COOLDOWN
-	# Retire le boost
 	for unit in get_tree().get_nodes_in_group("units"):
 		if unit is Unit and unit.owner_id == owner_id and unit != self:
 			var dist : float = global_position.distance_to(unit.global_position)
