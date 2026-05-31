@@ -17,6 +17,11 @@ var _dot_timer : float  = 0.0
 var _dot_count : int    = 0
 var _load_timer: float  = 0.0
 
+
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 func _ready() -> void:
 	layer   = 100
 	visible = false
@@ -56,7 +61,7 @@ func _build() -> void:
 	_overlay.add_child(line)
 
 	_dots          = Label.new()
-	_dots.text     = "Chargement"
+	_dots.text     = _lt("loading")
 	_dots.position = Vector2(0, 400)
 	_dots.size     = Vector2(1152, 40)
 	_dots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -95,7 +100,7 @@ func _process(delta: float) -> void:
 			if _dot_timer >= 0.35:
 				_dot_timer  = 0.0
 				_dot_count  = (_dot_count + 1) % 4
-				_dots.text  = "Chargement" + ".".repeat(_dot_count)
+				_dots.text  = _lt("loading") + ".".repeat(_dot_count)
 			if _load_timer >= 0.6:
 				_phase = "fade_out"
 
