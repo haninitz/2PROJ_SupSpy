@@ -3,10 +3,10 @@
 > Jeu de stratégie / conquête temps réel — Projet 2PROJ · SUPINFO Paris  
 > Capturez des camps, produisez des unités, éliminez vos adversaires.
 
-![Godot](https://img.shields.io/badge/Godot-4.6.2-blue?logo=godotengine)
-![Platform](https://img.shields.io/badge/Platform-Windows%20x86__64-lightgrey?logo=windows)
-![Language](https://img.shields.io/badge/Language-GDScript-green)
-![Status](https://img.shields.io/badge/Status-Playable-brightgreen)
+- **Moteur :** Godot 4.6.2
+- **Plateforme :** Windows x86_64
+- **Langage :** GDScript
+- **Statut :** Playable ✅
 
 ---
 
