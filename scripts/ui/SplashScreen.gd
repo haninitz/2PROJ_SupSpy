@@ -114,7 +114,8 @@ func _build() -> void:
 
 	# Prompt
 	_prompt          = Label.new()
-	_prompt.text     = "CLIQUER POUR COMMENCER"
+	var _u := get_node_or_null("/root/UIUtils")
+	_prompt.text     = _u.lt("click_to_start") if _u else "CLICK TO START"
 	_prompt.position = Vector2(0, 640)
 	_prompt.size     = Vector2(1152, 28)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

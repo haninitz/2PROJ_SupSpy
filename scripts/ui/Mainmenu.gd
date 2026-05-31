@@ -627,7 +627,7 @@ func _open_leaderboard() -> void:
 		_lb_rows.custom_minimum_size = Vector2(U.WIN_W - 110, 0)
 		sc.add_child(_lb_rows)
 		# Ligne d'état provisoire
-		_lb_status = U.lbl("Chargement…", Vector2(55, 200), 14, U.C_GOLD)
+		_lb_status = U.lbl(U.lt("lb_loading"), Vector2(55, 200), 14, U.C_GOLD)
 		scr.add_child(_lb_status)
 		# Branche la réception + lance la requête serveur
 		if not Matchmaker.leaderboard_received.is_connected(_on_leaderboard_received):

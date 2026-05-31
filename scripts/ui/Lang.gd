@@ -78,6 +78,9 @@ const STRINGS = {
 		# Play screen
 		"main_menu":      "Menu Principal",
 		"logout":         "⏏ Déconnexion",
+		"loading":        "Chargement",
+		"click_to_start": "CLIQUER POUR COMMENCER",
+		"lb_loading":     "Chargement…",
 		# Descriptions maps
 		"map1_desc":      "Urbain · Rivière · Pont",
 		"map2_desc":      "Forêt dense · Hauts revenus",
@@ -297,6 +300,9 @@ const STRINGS = {
 		# Play screen
 		"main_menu":      "Main Menu",
 		"logout":         "⏏ Logout",
+		"loading":        "Loading",
+		"click_to_start": "CLICK TO START",
+		"lb_loading":     "Loading…",
 		# Map descriptions
 		"map1_desc":      "Urban · River · Bridge",
 		"map2_desc":      "Dense forest · High income",
@@ -516,6 +522,9 @@ const STRINGS = {
 		# Play screen
 		"main_menu":      "Menú Principal",
 		"logout":         "⏏ Cerrar sesión",
+		"loading":        "Cargando",
+		"click_to_start": "CLIC PARA EMPEZAR",
+		"lb_loading":     "Cargando…",
 		# Descripciones mapas
 		"map1_desc":      "Urbano · Río · Puente",
 		"map2_desc":      "Bosque denso · Altos ingresos",
