@@ -201,6 +201,11 @@ func _start_game() -> void:
 	_overlay.main = self
 	_overlay.queue_redraw()
 
+	# En multi, le client annonce à l'hôte qu'il a fini de construire ses camps.
+	# L'hôte lui renverra alors l'état complet (évite la course de synchro).
+	if GameConfig.mode == "multi" and not GameConfig.is_host and multiplayer.multiplayer_peer != null:
+		_rpc_client_ready.rpc_id(1)
+
 func _on_squads_selected(squad1: String, squad2: String) -> void:
 	GameConfig.selected_team_ids = [
 		_get_team_index_by_name(squad1),
@@ -512,23 +517,25 @@ func _clear_unit_selection() -> void:
 	if _ui and _ui.has_method("update_selection_panel"):
 		_ui.update_selection_panel(_selected_units)
 
-func _order_units_to_position(units_list: Array, target_pos: Vector2) -> void:
+func _order_units_to_position(units_list: Array, target_pos: Vector2, controller_id: int = -1) -> void:
+	var ctrl_id: int = controller_id if controller_id > 0 else local_player_id
 	for i in range(units_list.size()):
 		var unit = units_list[i]
-		if not is_instance_valid(unit) or not unit.can_be_controlled_by(local_player_id):
+		if not is_instance_valid(unit) or not unit.can_be_controlled_by(ctrl_id):
 			continue
 		_detach_unit_from_home(unit)
 		unit.clear_target_camp()
 		unit.move_to(target_pos + _formation_offset(i, units_list.size()))
 
-func _order_units_to_camp(units_list: Array, target_camp: Node) -> void:
+func _order_units_to_camp(units_list: Array, target_camp: Node, controller_id: int = -1) -> void:
+	var ctrl_id: int = controller_id if controller_id > 0 else local_player_id
 	for i in range(units_list.size()):
 		var unit = units_list[i]
-		if not is_instance_valid(unit) or not unit.can_be_controlled_by(local_player_id):
+		if not is_instance_valid(unit) or not unit.can_be_controlled_by(ctrl_id):
 			continue
 		_detach_unit_from_home(unit)
 		unit.move_to_camp(target_camp, _formation_offset(i, units_list.size()))
-	if target_camp.owner_id == local_player_id:
+	if target_camp.owner_id == ctrl_id:
 		_log("Déplacement vers %s" % target_camp.camp_name)
 	else:
 		_log("Attaque de %s" % target_camp.camp_name)
@@ -985,6 +992,13 @@ func _broadcast_state() -> void:
 	_rpc_receive_full_state.rpc(state)
 
 
+@rpc("any_peer", "reliable")
+func _rpc_client_ready() -> void:
+	# Appelé par le client quand ses camps sont construits → on lui pousse l'état.
+	if not GameConfig.is_host:
+		return
+	_broadcast_state()
+
 func _make_sync_state() -> Dictionary:
 	var camps_data : Array = []
 	for i in range(_camps.size()):
@@ -1009,8 +1023,8 @@ func _make_sync_state() -> Dictionary:
 		if uid <= 0:
 			continue
 
-		var home_idx: int = _camps.find(unit.home_camp) if unit.home_camp != null else -1
-		var target_idx: int = _camps.find(unit.target_camp) if unit.target_camp != null else -1
+		var home_idx: int = _camps.find(unit.home_camp) if is_instance_valid(unit.home_camp) else -1
+		var target_idx: int = _camps.find(unit.target_camp) if is_instance_valid(unit.target_camp) else -1
 
 		units_data.append({
 			"id": uid,
@@ -1039,6 +1053,10 @@ func _rpc_receive_full_state(state: Dictionary) -> void:
 
 
 func _apply_sync_state(state: Dictionary) -> void:
+	# Le 1er état de l'hôte peut arriver avant que _start_game ait construit nos
+	# camps côté client. Dans ce cas on ignore : le prochain broadcast suivra.
+	if _camps.is_empty():
+		return
 	if state.has("gold"):
 		var gold_data: Array = state["gold"]
 		if gold_data.size() == _gold.size():
@@ -1066,6 +1084,11 @@ func _apply_sync_state(state: Dictionary) -> void:
 		camp.units = int(cd.get("u", camp.units))
 		camp.unit_type = String(cd.get("ut", camp.unit_type))
 		camp.production_queue = cd.get("q", []).duplicate(true)
+	# Recalcule owned_camps de chaque joueur d'après les propriétaires
+	# synchronisés, sinon le panneau "X camps" du client reste figé sur
+	# l'état initial de la map (ex. affiche 2 camps au lieu de 1).
+	if GameManager and GameManager.has_method("_assign_camps_to_players"):
+		GameManager._assign_camps_to_players()
 
 	var seen_units: Dictionary = {}
 
@@ -1076,14 +1099,32 @@ func _apply_sync_state(state: Dictionary) -> void:
 
 		seen_units[uid] = true
 
-		var unit: Unit = _units_by_net_id.get(uid, null)
-
-		if unit == null or not is_instance_valid(unit):
-			var camp_idx: int = int(ud.get("home", -1))
-			var fallback_camp: Node = _camps[camp_idx] if camp_idx >= 0 and camp_idx < _camps.size() else _camps[0]
-			unit = _spawn_unit(String(ud.get("type", "infantry")), fallback_camp, false, uid, true)
+		# is_instance_valid() gère à la fois null ET une instance libérée.
+		# On n'utilise JAMAIS "!= null" ici : en Godot 4 une instance libérée
+		# peut être considérée == null, ce qui laisserait passer une instance
+		# morte vers la variable typée `unit` → crash "freed instance".
+		var stored = _units_by_net_id.get(uid, null)
+		var unit: Unit = null
+		if is_instance_valid(stored):
+			unit = stored
+		else:
+			_units_by_net_id.erase(uid)
 
 		if unit == null:
+			var camp_idx: int = int(ud.get("home", -1))
+			var fallback_camp: Node = null
+			if camp_idx >= 0 and camp_idx < _camps.size() and is_instance_valid(_camps[camp_idx]):
+				fallback_camp = _camps[camp_idx]
+			else:
+				for c in _camps:
+					if is_instance_valid(c):
+						fallback_camp = c
+						break
+			if fallback_camp == null:
+				continue
+			unit = _spawn_unit(String(ud.get("type", "infantry")), fallback_camp, false, uid, true)
+
+		if unit == null or not is_instance_valid(unit):
 			continue
 
 		unit.owner_id = int(ud.get("owner", 0))
@@ -1093,10 +1134,16 @@ func _apply_sync_state(state: Dictionary) -> void:
 		unit.is_alive = bool(ud.get("alive", true))
 
 		var home_idx: int = int(ud.get("home", -1))
-		unit.home_camp = _camps[home_idx] if home_idx >= 0 and home_idx < _camps.size() else null
+		if home_idx >= 0 and home_idx < _camps.size() and is_instance_valid(_camps[home_idx]):
+			unit.home_camp = _camps[home_idx]
+		else:
+			unit.home_camp = null
 
 		var target_idx: int = int(ud.get("target", -1))
-		unit.target_camp = _camps[target_idx] if target_idx >= 0 and target_idx < _camps.size() else null
+		if target_idx >= 0 and target_idx < _camps.size() and is_instance_valid(_camps[target_idx]):
+			unit.target_camp = _camps[target_idx]
+		else:
+			unit.target_camp = null
 
 		if unit.has_method("_update_hp_bar"):
 			unit._update_hp_bar()
@@ -1107,10 +1154,10 @@ func _apply_sync_state(state: Dictionary) -> void:
 			to_remove.append(uid)
 
 	for uid in to_remove:
-		var unit = _units_by_net_id[uid]
+		var dead = _units_by_net_id.get(uid, null)
 		_units_by_net_id.erase(uid)
-		if is_instance_valid(unit):
-			unit.queue_free()
+		if is_instance_valid(dead):
+			dead.queue_free()
 
 	var winner: int = int(state.get("winner", 0))
 	if winner > 0 and not _game_over:
@@ -1155,17 +1202,17 @@ func _rpc_request_unit_order(unit_ids: Array, camp_idx: int, target_pos: Vector2
 
 	var units_list: Array = []
 	for uid in unit_ids:
-		var unit: Unit = _units_by_net_id.get(int(uid), null)
-		if unit != null and is_instance_valid(unit) and unit.owner_id == player_id and unit.is_alive:
-			units_list.append(unit)
+		var stored = _units_by_net_id.get(int(uid), null)
+		if is_instance_valid(stored) and stored.owner_id == player_id and stored.is_alive:
+			units_list.append(stored)
 
 	if units_list.is_empty():
 		return
 
 	if has_camp and camp_idx >= 0 and camp_idx < _camps.size():
-		_order_units_to_camp(units_list, _camps[camp_idx])
+		_order_units_to_camp(units_list, _camps[camp_idx], player_id)
 	else:
-		_order_units_to_position(units_list, target_pos)
+		_order_units_to_position(units_list, target_pos, player_id)
 
 	_broadcast_state()
 

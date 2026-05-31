@@ -10,6 +10,7 @@ extends Node2D
 @export var damage: float      = 10.0   # dégâts par tir
 @export var attack_range: float = 150.0  # portée en pixels
 @export var hit_speed: float   = 2.0    # secondes entre chaque tir
+const DEBUG_TURRET := false   # passer à true pour logger chaque tir de tourelle
 
 var current_target: Unit = null
 var camp: Camp = null          # référence au camp parent
@@ -72,12 +73,17 @@ func _on_attack_timer() -> void:
 	_fire(current_target)
 
 func _fire(target: Unit) -> void:
+	# En multijoueur, seul l'hôte simule les tourelles. Le client reçoit les HP
+	# autoritatifs via Main._apply_sync_state et ne doit rien simuler.
+	if GameConfig.mode == "multi" and not GameConfig.is_host:
+		return
 	if camp == null:
 		return
 	# La tourelle n'attaque que si le camp a un propriétaire (pas neutre)
 	# Les camps neutres attaquent aussi selon les règles du sujet
 	target.take_damage(damage)
-	print(camp.camp_name, " tourelle tire sur Joueur ", target.owner_id, " | dégâts: ", damage)
+	if DEBUG_TURRET:
+		print(camp.camp_name, " tourelle tire sur Joueur ", target.owner_id, " | dégâts: ", damage)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UTILITAIRES

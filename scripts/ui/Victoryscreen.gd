@@ -235,7 +235,7 @@ func _build_victory_screen() -> void:
 	ov.bg_color = Color(0, 0, 0, 0.80)
 	victory_screen.add_theme_stylebox_override("panel", ov)
 	_end_layer.add_child(victory_screen)
-	victory_screen.z_index = 10000
+	victory_screen.z_index = 4096
 	victory_screen.z_as_relative = false
 	victory_screen.mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -341,7 +341,7 @@ func _build_defeat_screen() -> void:
 	ov.bg_color = Color(0.0, 0.0, 0.0, 0.90)
 	defeat_screen.add_theme_stylebox_override("panel", ov)
 	_end_layer.add_child(defeat_screen)
-	defeat_screen.z_index = 10000
+	defeat_screen.z_index = 4096
 	defeat_screen.z_as_relative = false
 	defeat_screen.mouse_filter = Control.MOUSE_FILTER_STOP
 
