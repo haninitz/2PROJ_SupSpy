@@ -32,6 +32,13 @@ const CONNECT_TIMEOUT := 20.0
 var _connecting      := false
 var _connect_elapsed := 0.0
 
+# ── Heartbeat hôte → client (détection du départ de l'hôte) ───────────────────
+const HEARTBEAT_INTERVAL : float = 0.5   # l'hôte envoie un ping toutes les 0.5 s
+const HOST_TIMEOUT       : float = 2.0   # client : aucun ping pendant 2 s = hôte parti
+var _heartbeat_send_t : float = 0.0
+var _heartbeat_recv_t : float = 0.0
+var _watch_host       : bool  = false
+
 # ── API publique (même signature qu'avant) ────────────────────────────────────
 
 func create_server() -> void:
@@ -103,6 +110,27 @@ func _connect_to_relay() -> void:
 func disconnect_from_server() -> void:
 	_teardown()
 	GameConfig.reset()
+	
+# Vrai seulement si le peer réseau existe ET est réellement connecté.
+func _peer_connected_ok() -> bool:
+	return multiplayer.multiplayer_peer != null \
+		and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+
+func _return_to_main_menu() -> void:
+	if GameConfig.is_host:
+		return  # l'hôte gère son quit dans PauseMenu
+	host_disconnected.emit()
+	_teardown()
+	GameConfig.reset()
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	
+# Appelé par l'HÔTE juste avant de quitter la partie (bouton Menu / Quitter) :
+# prévient les clients immédiatement, sans attendre le timeout du heartbeat.
+func notify_host_leaving() -> void:
+	if GameConfig.mode == "multi" and GameConfig.is_host and _peer_connected_ok():
+		_rpc_host_left.rpc()
+	
 # Coupe la connexion en gardant _peer et multiplayer.multiplayer_peer
 # synchronisés, SANS toucher à GameConfig (room_name/is_host/agent_name conservés).
 func reset_connection() -> void:
@@ -119,6 +147,7 @@ func _teardown() -> void:
 # ── Cycle de vie ──────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	# Signaux stables sur toute la durée de vie du node.
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -137,6 +166,21 @@ func _wake_servers() -> void:
 	print("[NetworkManager] Réveil du relay et du Matchmaker Render…")
 
 func _process(delta: float) -> void:
+	# Heartbeat hôte <-> client
+	if _peer_connected_ok() and GameConfig.mode == "multi":
+		if GameConfig.is_host:
+			_heartbeat_send_t += delta
+			if _heartbeat_send_t >= HEARTBEAT_INTERVAL:
+				_heartbeat_send_t = 0.0
+				_rpc_heartbeat.rpc()
+		elif _watch_host:
+			_heartbeat_recv_t += delta
+			if _heartbeat_recv_t >= HOST_TIMEOUT:
+				_watch_host = false
+				print("[NetworkManager] Hôte injoignable (heartbeat) — retour au menu")
+				_return_to_main_menu()
+				return
+	
 	# WebSocketMultiplayerPeer est pollé automatiquement par la SceneTree : on
 	# surveille juste le timeout de connexion.
 	if not _connecting:
@@ -158,6 +202,8 @@ func _on_connected_ok() -> void:
 		% [GameConfig.my_peer_id, GameConfig.is_host])
 	connection_progress.emit("Connecté !")
 	connected_to_server.emit()
+	_heartbeat_recv_t = 0.0
+	_watch_host = not GameConfig.is_host
 
 func _on_connection_fail() -> void:
 	_connecting = false
@@ -175,21 +221,32 @@ func _on_peer_connected(id: int) -> void:
 func _on_peer_disconnected(id: int) -> void:
 	print("[NetworkManager] Peer déconnecté : %d" % id)
 	player_disconnected.emit(id)
-	# En 1v1 via relay, l'hôte n'est plus peer 1 : si JE suis client, tout peer
-	# qui part est l'hôte (l'unique autre joueur).
 	if not GameConfig.is_host:
 		print("[NetworkManager] L'hôte s'est déconnecté !")
-		host_disconnected.emit()
-		disconnect_from_server()
-		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+		_return_to_main_menu()
 	else:
+		# L'hôte ignore la déco du client — il gère son propre quit dans PauseMenu
 		var scene := get_tree().current_scene
 		if scene.has_method("on_player_left"):
 			scene.on_player_left(id)
 		if RoomManager.player_room.has(id):
 			RoomManager.remove_player(id)
 
-# ── RPCs de synchronisation de jeu (inchangés) ───────────────────────────────
+### RPCs de synchronisation de jeu (inchangés)
+
+@rpc("any_peer", "reliable")
+func _rpc_heartbeat() -> void:
+	# Reçu par le client : l'hôte est vivant → on remet le compteur à zéro.
+	_heartbeat_recv_t = 0.0
+	
+@rpc("any_peer", "reliable")
+func _rpc_host_left() -> void:
+	# Reçu par le client : l'hôte a quitté volontairement → retour menu immédiat.
+	if GameConfig.is_host:
+		return
+	_watch_host = false
+	print("[NetworkManager] L'hôte a quitté la partie — retour à l'application")
+	_return_to_main_menu()
 
 @rpc("any_peer", "reliable")
 func sync_initial_state(state: Dictionary) -> void:
@@ -248,3 +305,4 @@ func sync_game_over(winner_id: int) -> void:
 	if scene.has_method("on_game_over"):
 		scene.on_game_over(winner_id)
 	print("[NetworkManager] Fin de partie — gagnant : %d" % winner_id)
+	

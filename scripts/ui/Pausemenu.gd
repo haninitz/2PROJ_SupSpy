@@ -70,7 +70,8 @@ func _build() -> void:
 		{"key": "pause_resume",  "col": U.C_PINK,              "fn": func(): resume(),         "ref": "_btn_resume"},
 		{"key": "pause_options", "col": U.C_CYAN,              "fn": func(): _open_options(),  "ref": "_btn_options"},
 		{"key": "pause_menu",    "col": U.C_GOLD,              "fn": func(): _go_to_menu(),    "ref": "_btn_menu"},
-		{"key": "pause_quit",    "col": Color(0.70, 0.20, 0.20),"fn": func(): get_tree().quit(),"ref": "_btn_quit"},
+		#{"key": "pause_quit",    "col": Color(0.70, 0.20, 0.20),"fn": func(): get_tree().quit(),"ref": "_btn_quit"},
+		{"key": "pause_quit", "col": Color(0.70, 0.20, 0.20), "fn": func(): _quit_game(), "ref": "_btn_quit"},
 	]
 
 	for i in range(btn_defs.size()):
@@ -220,9 +221,30 @@ func _open_options() -> void:
 	close.pressed.connect(func(): scr.queue_free())
 	scr.add_child(close)
 
-
 func _go_to_menu() -> void:
 	get_tree().paused = false
-	GameConfig.mode   = ""   # empêche l'auto-démarrage au rechargement
-	get_tree().reload_current_scene()
 	quit_to_menu.emit()
+	print("[PauseMenu] _go_to_menu mode='%s' is_host=%s" % [GameConfig.mode, GameConfig.is_host])
+	if GameConfig.mode == "multi":
+		if GameConfig.is_host:
+			NetworkManager.notify_host_leaving()
+			await get_tree().create_timer(0.3).timeout
+			NetworkManager.disconnect_from_server()
+			get_tree().quit()
+			return
+		else:
+			NetworkManager.disconnect_from_server()
+			GameConfig.mode = ""
+			get_tree().change_scene_to_file("res://scenes/Main.tscn")
+			return
+	# IA / solo — comportement original
+	GameConfig.mode = ""
+	get_tree().reload_current_scene()
+	
+func _quit_game() -> void:
+	if GameConfig.mode == "multi":
+		if GameConfig.is_host:
+			NetworkManager.notify_host_leaving()
+			await get_tree().create_timer(0.3).timeout
+		NetworkManager.disconnect_from_server()
+	get_tree().quit()
