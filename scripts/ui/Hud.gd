@@ -43,6 +43,9 @@ var _sel_rng_lbl : Label = null
 var _sel_type_lbl: Label = null
 
 var event_log         : RichTextLabel
+var _log_btn          : Button = null
+var _log_panel_open   : bool = false
+var _stats_bg         : Panel = null
 
 var _log_entries : Array = []
 var _lb_refresh_acc : float = 0.0
@@ -96,20 +99,34 @@ func _process(delta: float) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 
 func _build_stats_bar() -> void:
-	info_label   = _lbl_add(Vector2(10,  U.MAP_H + 8),  Vector2(190, 28))
-	gold_label   = _lbl_add(Vector2(210, U.MAP_H + 8),  Vector2(100, 28))
-	income_label = _lbl_add(Vector2(320, U.MAP_H + 8),  Vector2(110, 28))
-	camps_label  = _lbl_add(Vector2(440, U.MAP_H + 8),  Vector2(160, 28))
-	msg_label    = _lbl_add(Vector2(10,  U.MAP_H + 52), Vector2(580, 28))
-	unit_label   = _lbl_add(Vector2(600, U.MAP_H + 52), Vector2(340, 28))
-	unit_label.visible   = false
-	info_label.visible   = false
-	gold_label.visible   = false
-	income_label.visible = false
-	camps_label.visible  = false
-	msg_label.visible    = false
+	_stats_bg = Panel.new()
+	_stats_bg.visible = false
+	_stats_bg.position = Vector2(68, 8)
+	_stats_bg.size = Vector2(640, 42)
+	_stats_bg.add_theme_stylebox_override("panel",
+		U.flat(Color(0.04, 0.02, 0.10, 0.90), U.C_PINK, 2, 10))
+	add_child(_stats_bg)
 
-	# Bouton pause — coin supérieur gauche
+	info_label   = _lbl_add(Vector2(82,  15), Vector2(190, 24))
+	gold_label   = _lbl_add(Vector2(275, 15), Vector2(110, 24))
+	income_label = _lbl_add(Vector2(390, 15), Vector2(130, 24))
+	camps_label  = _lbl_add(Vector2(525, 15), Vector2(160, 24))
+	msg_label    = _lbl_add(Vector2(720, 15), Vector2(240, 24))
+	unit_label   = _lbl_add(Vector2(720, 42), Vector2(260, 22))
+
+	for lbl in [info_label, gold_label, income_label, camps_label, msg_label, unit_label]:
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.add_theme_color_override("font_color", U.C_WHITE)
+		lbl.visible = false
+
+	info_label.add_theme_color_override("font_color", U.C_PINK)
+	gold_label.add_theme_color_override("font_color", U.C_GOLD)
+	income_label.add_theme_color_override("font_color", U.C_CYAN)
+	camps_label.add_theme_color_override("font_color", U.C_WHITE)
+	msg_label.add_theme_color_override("font_color", Color(0.75, 0.65, 0.85))
+	unit_label.add_theme_color_override("font_color", U.C_CYAN)
+	unit_label.visible = false
+
 	_pause_btn          = Button.new()
 	_pause_btn.text     = "  ⏸  "
 	_pause_btn.position = Vector2(10, 10)
@@ -124,18 +141,17 @@ func _build_stats_bar() -> void:
 	_pause_btn.pressed.connect(func(): pause_requested.emit())
 	add_child(_pause_btn)
 
-
 func _build_leaderboard() -> void:
 	_lb_bg = Panel.new()
 	_lb_bg.visible  = false
 	var lb_bg : Panel = _lb_bg
-	lb_bg.position = Vector2(U.WIN_W - 228, 6)
-	lb_bg.size     = Vector2(222, 220)
+	lb_bg.position = Vector2(U.WIN_W - 218, 8)
+	lb_bg.size     = Vector2(210, 154)
 	var lbs : StyleBoxFlat = StyleBoxFlat.new()
 	lbs.bg_color    = Color(0.04, 0.02, 0.10, 0.88)
 	lbs.border_color = U.C_PINK
 	lbs.set_border_width_all(2)
-	lbs.set_corner_radius_all(6)
+	lbs.set_corner_radius_all(8)
 	lb_bg.add_theme_stylebox_override("panel", lbs)
 	add_child(lb_bg)
 
@@ -143,7 +159,7 @@ func _build_leaderboard() -> void:
 	var lt : Label = _lb_title
 	lt.text     = U.lt("players_title")
 	lt.position = Vector2(0, 5)
-	lt.size     = Vector2(222, 22)
+	lt.size     = Vector2(210, 20)
 	lt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lt.add_theme_font_size_override("font_size", 12)
 	lt.add_theme_color_override("font_color", U.C_GOLD)
@@ -151,24 +167,41 @@ func _build_leaderboard() -> void:
 
 	leaderboard_container = VBoxContainer.new()
 	leaderboard_container.position = Vector2(6, 28)
-	leaderboard_container.size     = Vector2(210, 188)
-	leaderboard_container.add_theme_constant_override("separation", 5)
+	leaderboard_container.size     = Vector2(198, 118)
+	leaderboard_container.add_theme_constant_override("separation", 4)
 	lb_bg.add_child(leaderboard_container)
-
 
 func _build_event_log() -> void:
 	event_log = RichTextLabel.new()
-	event_log.position       = Vector2(10, U.MAP_H + 5)
-	event_log.size           = Vector2(500, 90)
+	event_log.position       = Vector2(12, 58)
+	event_log.size           = Vector2(360, 96)
 	event_log.scroll_active  = false
 	event_log.fit_content    = true
+	event_log.mouse_filter   = Control.MOUSE_FILTER_IGNORE
 	var bg : StyleBoxFlat = StyleBoxFlat.new()
-	bg.bg_color = Color(0.04, 0.02, 0.10, 0.70)
-	bg.set_corner_radius_all(4)
+	bg.bg_color = Color(0.04, 0.02, 0.10, 0.82)
+	bg.border_color = Color(U.C_PURPLE.r, U.C_PURPLE.g, U.C_PURPLE.b, 0.60)
+	bg.set_border_width_all(1)
+	bg.set_corner_radius_all(6)
 	event_log.add_theme_stylebox_override("normal", bg)
-	add_child(event_log)
 	event_log.visible = false
+	add_child(event_log)
 
+	_log_btn = Button.new()
+	_log_btn.text = "Journal"
+	_log_btn.position = Vector2(12, 54)
+	_log_btn.size = Vector2(86, 28)
+	_log_btn.visible = false
+	_log_btn.add_theme_font_size_override("font_size", 11)
+	_log_btn.add_theme_stylebox_override("normal",
+		U.flat(Color(0.05, 0.03, 0.12, 0.85), U.C_PURPLE, 1, 6))
+	_log_btn.add_theme_stylebox_override("hover",
+		U.flat(Color(0.12, 0.05, 0.20, 0.95), U.C_PURPLE, 2, 6))
+	_log_btn.add_theme_color_override("font_color", U.C_WHITE)
+	_log_btn.pressed.connect(func():
+		_log_panel_open = not _log_panel_open
+		event_log.visible = _log_panel_open)
+	add_child(_log_btn)
 
 func _build_recruit_bar() -> void:
 	recruit_bar          = Control.new()
@@ -238,6 +271,7 @@ func _build_recruit_bar() -> void:
 			recruit_pressed.emit(t))
 		container.add_child(b)
 		recruit_btns.append(b)
+		b.set_meta("container", container)
 
 		# Fond barre de progression
 		var prog_bg := ColorRect.new()
@@ -464,8 +498,12 @@ func show_hud() -> void:
 	refresh_leaderboard()
 	if _minimap:
 		_minimap.show_minimap()
+	if _log_btn:
+		_log_btn.visible = true
 	if event_log:
-		event_log.visible = true
+		event_log.visible = _log_panel_open
+	if _stats_bg:
+		_stats_bg.visible = true
 	info_label.visible   = true
 	gold_label.visible   = true
 	income_label.visible = true
@@ -481,6 +519,12 @@ func hide_hud() -> void:
 		_lb_bg.visible = false
 	if _pause_btn:
 		_pause_btn.visible = false
+	if _stats_bg:
+		_stats_bg.visible = false
+	if _log_btn:
+		_log_btn.visible = false
+	if event_log:
+		event_log.visible = false
 
 
 func _refresh_stats() -> void:
@@ -562,7 +606,6 @@ func show_recruit(camp) -> void:
 
 	_current_camp = camp
 
-	# Texte du camp + file
 	var q_parts : Array = []
 	var queue : Array = camp.get("production_queue") if "production_queue" in camp \
 		else camp.get("queue", [])
@@ -573,26 +616,33 @@ func show_recruit(camp) -> void:
 		q_parts.append(lbl)
 
 	var camp_n : String = camp.get("camp_name") if "camp_name" in camp else camp.get("name", "?")
+	var mode_text : String = "Unités navales" if camp.get("is_port") == true else "Unités terrestres"
 	if q_parts.is_empty():
-		camp_label.text = "%s  —  %s" % [camp_n, U.lt("queue_empty_lbl")]
+		camp_label.text = "%s  —  %s  —  %s" % [camp_n, mode_text, U.lt("queue_empty_lbl")]
 	else:
-		camp_label.text = "%s  —  ▶ %s" % [camp_n, "  →  ".join(q_parts)]
+		camp_label.text = "%s  —  %s  —  ▶ %s" % [camp_n, mode_text, "  →  ".join(q_parts)]
 
-	# Visibilité des boutons selon port ou non
 	var ud : Node = get_node_or_null("/root/UnitDefs")
 	var is_port : bool = camp.get("is_port") == true
 	var allowed : Array = []
 	if ud:
 		allowed = ud.get_sea_units() if is_port else ud.get_land_units()
 
+	var x : int = 5
 	for b in recruit_btns:
 		if not is_instance_valid(b):
 			continue
 		var unit_type : String = b.get_meta("unit_type") if b.has_meta("unit_type") else ""
-		b.visible = allowed.is_empty() or unit_type in allowed
+		var is_allowed : bool = allowed.is_empty() or unit_type in allowed
+		var container : Control = b.get_meta("container") if b.has_meta("container") else b.get_parent()
+		if is_instance_valid(container):
+			container.visible = is_allowed
+			if is_allowed:
+				container.position = Vector2(x, 28)
+				x += U.BTN_W + 8
+		b.visible = is_allowed
 
 	recruit_bar.visible = true
-
 
 func hide_recruit() -> void:
 	recruit_bar.visible = false
@@ -697,6 +747,8 @@ func add_log(message: String) -> void:
 		_log_entries.pop_front()
 	if event_log:
 		event_log.text = "\n".join(_log_entries)
+	if _log_btn:
+		_log_btn.text = "Journal (%d)" % _log_entries.size()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

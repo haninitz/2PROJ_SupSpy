@@ -82,9 +82,7 @@ func _draw() -> void:
 			var owner : int     = camp.get("owner_id") if "owner_id" in camp \
 				else camp.get("owner", -1)
 
-			var col : Color = C_NEUTRAL
-			if owner == 0:   col = C_P1
-			elif owner == 1: col = C_P2
+			var col : Color = _owner_color(owner, main)
 
 			# Point rempli + halo semi-transparent
 			draw_circle(Vector2(mx, my), 3.5, col)
@@ -106,14 +104,34 @@ func _draw() -> void:
 		var ux   : float   = clamp(upos.x * SCALE_X, 0, MINI_W)
 		var uy   : float   = clamp(upos.y * SCALE_Y, 0, MINI_H)
 		var uid  : int     = unit.get("owner_id") if "owner_id" in unit else -1
-		var ucol : Color   = C_NEUTRAL
-		if uid == 0:   ucol = C_P1
-		elif uid == 1: ucol = C_P2
+		var ucol : Color   = _owner_color(uid, main)
 		draw_circle(Vector2(ux, uy), 1.5, ucol)
 
 	# ── Rectangle caméra ─────────────────────────────────────────────────────
 	_draw_camera_rect()
 
+
+func _owner_color(owner_id: int, main: Node = null) -> Color:
+	if owner_id == 0:
+		return C_NEUTRAL
+
+	if main and main.has_method("_get_owner_color"):
+		return main._get_owner_color(owner_id)
+
+	var gm := get_node_or_null("/root/GameManager")
+	if gm and gm.has_method("get_team_color"):
+		return gm.get_team_color(owner_id)
+
+	if gm and gm.has_method("find_player_by_id"):
+		var player = gm.find_player_by_id(owner_id)
+		if player and "color" in player:
+			return player.color
+
+	if owner_id == 1:
+		return C_P1
+	if owner_id == 2:
+		return C_P2
+	return C_NEUTRAL
 
 func _draw_camera_rect() -> void:
 	# Cherche la Camera2D active dans la scène

@@ -76,7 +76,7 @@ func _ready() -> void:
 
 	var gm : Node = get_node_or_null("/root/GameManager")
 	if gm and gm.has_signal("game_over"):
-		gm.game_over.connect(func(winner): show_victory(winner.player_name, 0, {}))
+		gm.game_over.connect(func(winner): show_victory(winner.player_name, {}))
 
 
 func _process(_delta: float) -> void:
@@ -86,7 +86,6 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	_victory.handle_input(event)
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE and _game_started:
 			if _victory.victory_screen and _victory.victory_screen.visible:
@@ -99,8 +98,8 @@ func _input(event: InputEvent) -> void:
 #  API publique — appelée par Main.gd
 # ─────────────────────────────────────────────────────────────────────────────
 
-func show_victory(winner_name: String, turns: int, stats: Dictionary = {}) -> void:
-	_victory.show_victory(winner_name, turns, stats)
+func show_victory(winner_name: String, stats: Dictionary = {}) -> void:
+	_victory.show_victory(winner_name, stats)
 
 func show_turn_screen(squad_name: String, turn_number: int) -> void:
 	_victory.show_turn_screen(squad_name, turn_number)

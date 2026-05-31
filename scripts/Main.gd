@@ -1006,7 +1006,7 @@ func _rpc_show_end_game(winner: int) -> void:
 		wn = _dn[wp.ai_level] if wp.ai_level < _dn.size() else "IA"
 	else:
 		wn = wp.player_name
-	_ui.show_victory(wn, 0, {})
+	_ui.show_victory(wn, {})
 
 
 func _check_victory() -> void:
@@ -1079,7 +1079,7 @@ func _end_game(winner: int) -> void:
 
 	# Le 2e argument doit être un int.
 	# On met 0 car le jeu n'est plus en tour par tour.
-	_ui.show_victory(winner_name, 0, winner_stats)
+	_ui.show_victory(winner_name, winner_stats)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UI

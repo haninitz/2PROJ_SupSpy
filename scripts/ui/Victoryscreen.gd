@@ -1,23 +1,5 @@
 class_name VictoryScreen
 extends Node
-# ─────────────────────────────────────────────────────────────────────────────
-#  VictoryScreen.gd — SupKonQuest · Totally Spies Edition
-#
-#  Écrans de fin :
-#    - Victoire  : confettis + étoiles animés + stats
-#    - Défaite   : ambiance sombre + stats
-#    - Tour      : séparateur entre les tours
-#
-#  Usage :
-#    vs.initialize(parent, U)
-#    vs.show_victory("Clover", turns, stats_dict)
-#    vs.show_defeat("Sam", turns, stats_dict)   ← nouveau
-#    vs.show_turn_screen("Neon Squad", 3)
-#
-#  stats_dict attendu (tous optionnels) :
-#    { "camps_peak": int, "units_lost": int, "duration_sec": float,
-#      "camps_final": int, "income_peak": int }
-# ─────────────────────────────────────────────────────────────────────────────
 
 var U : Node
 signal turn_confirmed
@@ -28,6 +10,7 @@ var victory_title    : Label
 var victory_winner   : Label
 var victory_sparkles : Array = []
 var _confetti_pieces : Array = []
+var _end_layer: CanvasLayer = null
 
 # ── Écran défaite ─────────────────────────────────────────────────────────────
 var defeat_screen      : Panel
@@ -42,12 +25,6 @@ var _victory_sub_lbl   : Label
 var _victory_play_btn  : Button
 var _victory_quit_btn  : Button
 
-# ── Écran tour ────────────────────────────────────────────────────────────────
-var turn_screen       : Panel
-var turn_name_label   : Label
-var turn_num_label    : Label
-var turn_prompt_label : Label
-
 # ── Interne ───────────────────────────────────────────────────────────────────
 var _parent : Node
 
@@ -57,7 +34,6 @@ func initialize(parent: Node, u: Node) -> void:
 	_parent = parent
 	_build_victory_screen()
 	_build_defeat_screen()
-	_build_turn_screen()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -99,7 +75,7 @@ func _animate_victory(t: float) -> void:
 #  API PUBLIQUE
 # ─────────────────────────────────────────────────────────────────────────────
 
-func show_victory(winner_name: String, turns: int, stats: Dictionary = {}) -> void:
+func show_victory(winner_name: String, stats: Dictionary = {}) -> void:
 	# Vérifie si c'est le joueur LOCAL qui gagne
 	# On cherche local_player_id dans Main pour trouver le bon joueur
 	var gm   = _parent.get_node_or_null("/root/GameManager")
@@ -115,7 +91,7 @@ func show_victory(winner_name: String, turns: int, stats: Dictionary = {}) -> vo
 			local_name = lp.player_name
 
 	if local_name != "" and local_name != winner_name:
-		show_defeat(winner_name, turns, stats)
+		show_defeat(winner_name, stats)
 		return
 
 	victory_winner.text     = winner_name
@@ -130,13 +106,14 @@ func show_victory(winner_name: String, turns: int, stats: Dictionary = {}) -> vo
 	if _victory_quit_btn:
 		_victory_quit_btn.text = U.lt("quit_btn")
 
-	_fill_stats_panel(victory_screen, winner_name, turns, stats, true)
+	_fill_stats_panel(victory_screen, winner_name, stats, true)
 
+	_parent.move_child(victory_screen, _parent.get_child_count() - 1)
 	victory_screen.visible = true
 	Sound.play("victory")
 
 
-func show_defeat(winner_name: String, turns: int, stats: Dictionary = {}) -> void:
+func show_defeat(winner_name: String, stats: Dictionary = {}) -> void:
 	# Mise à jour texte selon langue courante
 	if _defeat_title_lbl:
 		_defeat_title_lbl.text = U.lt("defeat_scr_title")
@@ -147,29 +124,16 @@ func show_defeat(winner_name: String, turns: int, stats: Dictionary = {}) -> voi
 	if _defeat_quit_btn:
 		_defeat_quit_btn.text = U.lt("quit_btn")
 
+	_parent.move_child(defeat_screen, _parent.get_child_count() - 1)
 	defeat_screen.visible = true
 
 	var sub : Label = defeat_screen.get_node_or_null("WinnerLabel")
 	if sub:
 		sub.text = U.lt("won_victory") % winner_name
 
-	_fill_stats_panel(defeat_screen, winner_name, turns, stats, false)
+	_fill_stats_panel(defeat_screen, winner_name, stats, false)
 
 	Sound.play("defeat")
-
-
-func show_turn_screen(squad_name: String, turn_number: int) -> void:
-	turn_name_label.text = squad_name
-	turn_num_label.text  = U.lt("turn_number") % turn_number
-	turn_screen.visible  = true
-
-
-func handle_input(event: InputEvent) -> void:
-	if not turn_screen or not turn_screen.visible:
-		return
-	if (event is InputEventMouseButton or event is InputEventKey) and event.pressed:
-		turn_screen.visible = false
-		turn_confirmed.emit()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -177,7 +141,7 @@ func handle_input(event: InputEvent) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 
 func _fill_stats_panel(screen: Panel, winner_name: String,
-		turns: int, stats: Dictionary, is_victory: bool) -> void:
+		stats: Dictionary, is_victory: bool) -> void:
 
 	var container : Node = screen.get_node_or_null("StatsContainer")
 	if container == null:
@@ -198,8 +162,6 @@ func _fill_stats_panel(screen: Panel, winner_name: String,
 	else:
 		dur_str = "%.0f s" % dur_sec
 	_add_stat_row(container, U.lt("stat_duration"), dur_str, accent)
-
-	_add_stat_row(container, U.lt("stat_turns"), str(turns), accent)
 
 	var peak : int = stats.get("camps_peak", 0)
 	if peak > 0:
@@ -261,6 +223,8 @@ func _build_victory_screen() -> void:
 	ov.bg_color = Color(0, 0, 0, 0.80)
 	victory_screen.add_theme_stylebox_override("panel", ov)
 	_parent.add_child(victory_screen)
+	victory_screen.z_index = 10000
+	victory_screen.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Panneau central
 	var panel := Panel.new()
@@ -364,6 +328,8 @@ func _build_defeat_screen() -> void:
 	ov.bg_color = Color(0.0, 0.0, 0.0, 0.90)
 	defeat_screen.add_theme_stylebox_override("panel", ov)
 	_parent.add_child(defeat_screen)
+	defeat_screen.z_index = 10000
+	defeat_screen.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Panneau central
 	var panel := Panel.new()
@@ -435,33 +401,3 @@ func _build_defeat_screen() -> void:
 	defeat_screen.add_child(_defeat_quit_btn)
 
 	defeat_screen.visible = false
-
-
-func _build_turn_screen() -> void:
-	turn_screen = U.make_screen(false)
-	turn_screen.add_theme_stylebox_override("panel",
-		U.flat(Color(0.02, 0.01, 0.06, 0.96), U.C_BG, 0, 0))
-	_parent.add_child(turn_screen)
-
-	turn_name_label          = Label.new()
-	turn_name_label.position = Vector2(0, 295)
-	turn_name_label.size     = Vector2(U.WIN_W, 110)
-	turn_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	turn_name_label.add_theme_font_size_override("font_size", 64)
-	turn_name_label.modulate = U.C_PINK
-	turn_screen.add_child(turn_name_label)
-
-	turn_num_label          = Label.new()
-	turn_num_label.position = Vector2(0, 410)
-	turn_num_label.size     = Vector2(U.WIN_W, 40)
-	turn_num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	turn_screen.add_child(turn_num_label)
-
-	turn_prompt_label          = Label.new()
-	turn_prompt_label.text     = U.lt("turn_prompt")
-	turn_prompt_label.position = Vector2(0, 560)
-	turn_prompt_label.size     = Vector2(U.WIN_W, 30)
-	turn_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	turn_screen.add_child(turn_prompt_label)
-
-	turn_screen.visible = false
