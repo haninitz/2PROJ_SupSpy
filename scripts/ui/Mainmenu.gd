@@ -23,7 +23,7 @@ var _lb_scr     : Panel = null
 var _lb_status  : Label = null           
 var _lb_filled  : bool  = false          
 var _lb_rows    : VBoxContainer = null   
-var _lb_cols_x  : Array[int] = [55, 110, 330, 560, 700]  
+var _lb_cols_x  : Array[int] = [55, 110, 330, 560, 700, 850]  
 var _ai_screen    : Panel = null
 var _multi_screen : Panel = null
 var _play_screen  : Panel = null
@@ -536,7 +536,7 @@ func _open_leaderboard() -> void:
 	_lb_filled = false
 	_open_overlay(U.lt("leaderboard"), U.C_PURPLE, func(scr: Panel):
 		_lb_scr = scr
-		var headers : Array[String] = ["#", U.lt("player_col"), "LOGIN", U.lt("wins"), U.lt("losses")]
+		var headers : Array[String] = ["#", U.lt("player_col"), "LOGIN", U.lt("wins"), U.lt("losses"), "Ratio"]
 		for i in range(headers.size()):
 			scr.add_child(U.lbl(headers[i], Vector2(_lb_cols_x[i], 148), 13, U.C_PURPLE))
 		var div := ColorRect.new()
@@ -591,16 +591,22 @@ func _fill_leaderboard_rows(players: Array) -> void:
 		return
 	for r in range(players.size()):
 		var p : Dictionary = players[r]
+		var wins   : int = int(p.get("wins", 0))
+		var losses : int = int(p.get("losses", 0))
+		var total  : int = wins + losses
+		var ratio  : int = 0 if total == 0 else int(round(float(wins) / float(total) * 100.0))
 		var cells : Array[String] = [
 			str(r + 1),
 			str(p.get("pseudo", "")),
 			str(p.get("username", "")),
-			str(int(p.get("wins", 0))),     
-			str(int(p.get("losses", 0))),
+			str(wins),      # int → fini les 1.0 / 0.0
+			str(losses),
+			"%d%%" % ratio,
 		]
 		var row := Control.new()
 		row.custom_minimum_size = Vector2(U.WIN_W - 110, 44)
 		for c in range(cells.size()):
+			# x relatif à l'origine du ScrollContainer (x=55)
 			row.add_child(U.lbl(cells[c], Vector2(_lb_cols_x[c] - 55, 8), 14,
 				U.C_GOLD if r == 0 else Color(0.88, 0.85, 0.92)))
 		_lb_rows.add_child(row)
