@@ -34,10 +34,10 @@ func debarquer() -> void:
 			unit.show()
 	unites_embarquees.clear()
 
-# Override die() — si coulé, toutes les unités embarquées meurent aussi
-func die() -> void:
+func die(killer_owner_id: int = -1, killer_unit: Node = null) -> void:
 	for unit in unites_embarquees:
 		if is_instance_valid(unit):
-			unit.die()    
+			unit.die(killer_owner_id, killer_unit)
+
 	unites_embarquees.clear()
-	super.die()
+	super.die(killer_owner_id, killer_unit)

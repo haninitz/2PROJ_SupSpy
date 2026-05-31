@@ -16,6 +16,8 @@ var token:    String = ""
 var username: String = ""
 var wins:     int    = 0
 var losses:   int    = 0
+var gold:     int    = 300
+var initial_state: Dictionary = {}
 
 func get_max_players() -> int:
 	# Format peut être "2".."8" (nb joueurs) ou legacy "1v1","2v2","3v3","4v4"
@@ -41,3 +43,5 @@ func reset() -> void:
 	my_peer_id = 0
 	players.clear()
 	selected_team_ids = [0, 1]
+	gold = 300
+	initial_state.clear()

@@ -1,16 +1,3 @@
-# =============================================================================
-#  Main.gd — SupKonQuest · Totally Spies Edition
-#
-#  Script racine de Main.tscn.
-#  Orchestre le game loop complet en connectant :
-#    - UI.gd  (menus, HUD, signaux joueur)
-#    - Camp_hani.gd (camps en scène via groupe "camps")
-#    - Combat (autoload, résolution des batailles)
-#    - MapDefs (autoload, données des cartes)
-#    - UnitDefs (autoload, prix et stats)
-#    - Sound / Lang (autoloads)
-# =============================================================================
-
 extends Node2D
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -63,6 +50,13 @@ var _selected_units : Array = []
 var _drag_start     : Vector2 = Vector2.ZERO
 var _drag_end       : Vector2 = Vector2.ZERO
 var _is_dragging    : bool = false
+
+var _unit_net_id_seq : int = 1
+var _units_by_net_id : Dictionary = {}
+var _pending_initial_sync_time : float = 0.0
+var _ai_units_per_attack : int = 2
+var _ai_recruit_choices : Array = ["infantry", "range"]
+var _winner_id : int = 0
 
 
 # ── Statistiques de fin de partie ────────────────────────────────────────────
@@ -125,9 +119,12 @@ func _start_game() -> void:
 	_ai_enabled = (GameConfig.mode == "ai")
 	_ai_player_id = 2
 	_ai_timer = 0.0
+	_configure_ai_difficulty()
 
 	_selected = null
 	_clear_unit_selection()
+	_units_by_net_id.clear()
+	_unit_net_id_seq = 1
 	_income_timer = 0.0
 	_game_start_time = Time.get_ticks_msec() / 1000.0
 	_gold         = [0, 150, 150]
@@ -185,12 +182,16 @@ func _start_game() -> void:
 		if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
 			_broadcast_state()
 
-	for camp in _camps:
-		var initial_units : int = int(camp.get_meta("initial_units", 1))
-		if camp.is_neutral_hard:
-			initial_units = max(initial_units, 5)
-		for j in range(initial_units):
-			_spawn_unit(camp.unit_type, camp, true)
+	if _is_authority():
+		for camp in _camps:
+			var initial_units : int = int(camp.get_meta("initial_units", 1))
+			if camp.is_neutral_hard:
+				initial_units = max(initial_units, 5)
+			for j in range(initial_units):
+				_spawn_unit(camp.unit_type, camp, true)
+		if GameConfig.mode == "multi":
+			_pending_initial_sync_time = 1.0
+			_broadcast_state()
 
 	_refresh_ui()
 	if _overlay == null:
@@ -214,6 +215,34 @@ func _get_team_index_by_name(team_name: String) -> int:
 		if team.get("name", "") == team_name:
 			return i
 	return 0
+
+
+func _is_authority() -> bool:
+	return GameConfig.mode != "multi" or GameConfig.is_host
+
+func _configure_ai_difficulty() -> void:
+	_ai_interval = 3.0
+	_ai_units_per_attack = 2
+	_ai_recruit_choices = ["infantry", "range"]
+
+	match GameConfig.diff:
+		"easy":
+			_ai_interval = 5.0
+			_ai_units_per_attack = 1
+			_ai_recruit_choices = ["infantry"]
+		"med", "medium":
+			_ai_interval = 3.0
+			_ai_units_per_attack = 2
+			_ai_recruit_choices = ["infantry", "range", "support"]
+		"hard":
+			_ai_interval = 1.6
+			_ai_units_per_attack = 3
+			_ai_recruit_choices = ["infantry", "range", "heavy", "anti_armor", "mortar", "support", "healer"]
+
+	print("[Main][IA] Difficulté=", GameConfig.diff,
+		" interval=", _ai_interval,
+		" units_per_attack=", _ai_units_per_attack,
+		" choices=", _ai_recruit_choices)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BOUCLE
@@ -266,13 +295,18 @@ func _process(delta: float) -> void:
 					camp.production_queue[0]["remaining"] = _build_time(camp.production_queue[0]["unit_type"])
 				_refresh_ui()
 
-	_process_unit_camp_orders()
+	if _is_authority():
+		_process_unit_camp_orders()
 
-	if _ai_enabled:
+	if _is_authority() and _ai_enabled:
 		_ai_timer += delta
 		if _ai_timer >= _ai_interval:
 			_ai_timer = 0.0
 			_run_ai_tick()
+
+	if _pending_initial_sync_time > 0.0 and _is_authority():
+		_pending_initial_sync_time -= delta
+		_broadcast_state()
 
 	if _overlay:
 		_overlay.queue_redraw()
@@ -375,7 +409,18 @@ func _handle_left_click(pos: Vector2, shift_held: bool = false) -> void:
 func _handle_right_click(pos: Vector2) -> void:
 	if _selected_units.is_empty():
 		return
+
 	var target_camp : Node = _get_camp_at(pos)
+
+	if GameConfig.mode == "multi" and not GameConfig.is_host:
+		var unit_ids : Array = []
+		for unit in _selected_units:
+			if is_instance_valid(unit) and unit.can_be_controlled_by(local_player_id):
+				unit_ids.append(_get_unit_net_id(unit))
+		var camp_idx : int = _camps.find(target_camp) if target_camp != null else -1
+		_rpc_request_unit_order.rpc(unit_ids, camp_idx, pos, target_camp != null, local_player_id)
+		return
+
 	if target_camp != null:
 		_order_units_to_camp(_selected_units, target_camp)
 	else:
@@ -660,7 +705,7 @@ func _run_ai_tick() -> void:
 
 
 func _ai_recruit(ai_player, ai_camps: Array) -> void:
-	var unit_choices: Array = ["infantry", "range"]
+	var unit_choices: Array = _ai_recruit_choices.duplicate()
 	var available_camps: Array = []
 	for camp in ai_camps:
 		if camp.production_queue.size() < MAX_QUEUE:
@@ -697,7 +742,8 @@ func _ai_attack(ai_camps: Array, targets: Array) -> void:
 	var target = _ai_find_best_target(attacker, targets)
 	if target == null:
 		return
-	var units_to_send: Array = attacker.get_available_garrison().slice(0, mini(2, attacker.get_available_garrison().size() - 1))
+	var send_count: int = mini(_ai_units_per_attack, attacker.get_available_garrison().size() - 1)
+	var units_to_send: Array = attacker.get_available_garrison().slice(0, send_count)
 	for unit in units_to_send:
 		_detach_unit_from_home(unit)
 		unit.move_to_camp(target, Vector2(randf_range(-30, 30), randf_range(-30, 30)))
@@ -739,31 +785,66 @@ func _on_recruit_pressed(unit_type: String) -> void:
 	if _selected.owner_id != local_player_id:
 		_log("Ce camp ne vous appartient pas !")
 		return
-	if not _can_recruit_unit_at_camp(_selected, unit_type):
+
+	var camp_idx : int = _camps.find(_selected)
+
+	if GameConfig.mode == "multi" and not GameConfig.is_host:
+		_rpc_request_recruit.rpc(camp_idx, unit_type, local_player_id)
+		return
+
+	_perform_recruit(local_player_id, camp_idx, unit_type)
+
+
+@rpc("any_peer", "reliable")
+func _rpc_request_recruit(camp_idx: int, unit_type: String, player_id: int) -> void:
+	if not GameConfig.is_host:
+		return
+	_perform_recruit(player_id, camp_idx, unit_type)
+	_broadcast_state()
+
+
+func _perform_recruit(player_id: int, camp_idx: int, unit_type: String) -> void:
+	if camp_idx < 0 or camp_idx >= _camps.size():
+		return
+
+	var camp : Node = _camps[camp_idx]
+
+	if camp.owner_id != player_id:
+		_log("Ce camp ne vous appartient pas !")
+		return
+
+	if not _can_recruit_unit_at_camp(camp, unit_type):
 		_log("Cette unité n'est pas disponible dans ce camp.")
 		return
-	if _selected.production_queue.size() >= MAX_QUEUE:
+
+	if camp.production_queue.size() >= MAX_QUEUE:
 		_log("File pleine !")
 		return
+
 	var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
-	var player = GameManager.find_player_by_id(local_player_id)
+	var player = GameManager.find_player_by_id(player_id)
+
 	if player == null or not player.spend_gold(price):
 		_log("Pas assez d or ! (%d requis)" % price)
 		return
-	if local_player_id < _gold.size():
-		_gold[local_player_id] = player.gold
-	var camp_idx : int = _camps.find(_selected)
-	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
-		_rpc_recruit.rpc(camp_idx, unit_type)
+
+	if player_id < _gold.size():
+		_gold[player_id] = player.gold
+
 	_resolve_recruit(camp_idx, unit_type)
+
 
 @rpc("any_peer", "reliable")
 func _rpc_recruit(camp_idx: int, unit_type: String) -> void:
-	if camp_idx < 0 or camp_idx >= _camps.size(): return
-	_resolve_recruit(camp_idx, unit_type)
+	if not GameConfig.is_host:
+		return
+	_perform_recruit(local_player_id, camp_idx, unit_type)
+
 
 func _resolve_recruit(camp_idx: int, unit_type: String) -> void:
-	if camp_idx < 0 or camp_idx >= _camps.size(): return
+	if camp_idx < 0 or camp_idx >= _camps.size():
+		return
+
 	var camp : Node = _camps[camp_idx]
 	camp.production_queue.append({"unit_type": unit_type, "remaining": _build_time(unit_type)})
 	camp.unit_type = unit_type
@@ -897,48 +978,196 @@ func _fix_complete_regions(regions: Array) -> void:
 # =============================================================================
 
 func _broadcast_state() -> void:
-	if not multiplayer.is_server():
+	if GameConfig.mode != "multi" or not GameConfig.is_host:
 		return
+
+	var state: Dictionary = _make_sync_state()
+	_rpc_receive_full_state.rpc(state)
+
+
+func _make_sync_state() -> Dictionary:
 	var camps_data : Array = []
 	for i in range(_camps.size()):
 		var c = _camps[i]
 		if not is_instance_valid(c):
 			continue
+
 		camps_data.append({
-			"i":    i,
-			"own":  c.owner_id,
-			"u":    c.units,
-			"ut":   c.unit_type,
-			"qs":   c.production_queue.size(),
+			"i": i,
+			"own": c.owner_id,
+			"u": c.units,
+			"ut": c.unit_type,
+			"q": c.production_queue.duplicate(true),
 		})
-	_receive_state.rpc(camps_data, _gold.duplicate())
+
+	var units_data : Array = []
+	for unit in get_tree().get_nodes_in_group("units"):
+		if not (unit is Unit) or not is_instance_valid(unit):
+			continue
+
+		var uid: int = _get_unit_net_id(unit)
+		if uid <= 0:
+			continue
+
+		var home_idx: int = _camps.find(unit.home_camp) if unit.home_camp != null else -1
+		var target_idx: int = _camps.find(unit.target_camp) if unit.target_camp != null else -1
+
+		units_data.append({
+			"id": uid,
+			"type": unit.unit_type_key,
+			"owner": unit.owner_id,
+			"pos": unit.global_position,
+			"hp": unit.hp,
+			"alive": unit.is_alive,
+			"home": home_idx,
+			"target": target_idx,
+		})
+
+	return {
+		"camps": camps_data,
+		"units": units_data,
+		"gold": _gold.duplicate(),
+		"winner": _winner_id if _game_over else 0,
+	}
 
 
-@rpc("authority", "reliable")
-func _receive_state(camps_data: Array, gold_data: Array) -> void:
-	# L hote ignore ses propres broadcasts
+@rpc("any_peer", "reliable")
+func _rpc_receive_full_state(state: Dictionary) -> void:
 	if GameConfig.is_host:
 		return
-	for cd in camps_data:
-		var idx : int = cd["i"]
+	_apply_sync_state(state)
+
+
+func _apply_sync_state(state: Dictionary) -> void:
+	if state.has("gold"):
+		var gold_data: Array = state["gold"]
+		if gold_data.size() == _gold.size():
+			_gold = gold_data.duplicate()
+			for p_id in range(_gold.size()):
+				var player = GameManager.find_player_by_id(p_id)
+				if player:
+					player.gold = int(_gold[p_id])
+
+	for cd in state.get("camps", []):
+		var idx: int = int(cd.get("i", -1))
 		if idx < 0 or idx >= _camps.size():
 			continue
+
 		var camp = _camps[idx]
 		if not is_instance_valid(camp):
 			continue
-		# change_owner gère couleur + label + health bar si owner change
-		if camp.owner_id != cd["own"] and camp.has_method("change_owner"):
-			camp.change_owner(cd["own"])
+
+		var new_owner: int = int(cd.get("own", 0))
+		if camp.owner_id != new_owner:
+			_set_camp_owner(camp, new_owner)
 		else:
-			camp.owner_id = cd["own"]
-		camp.units     = cd["u"]
-		camp.unit_type = cd["ut"]
-	if gold_data.size() == _gold.size():
-		_gold = gold_data.duplicate()
+			camp.owner_id = new_owner
+
+		camp.units = int(cd.get("u", camp.units))
+		camp.unit_type = String(cd.get("ut", camp.unit_type))
+		camp.production_queue = cd.get("q", []).duplicate(true)
+
+	var seen_units: Dictionary = {}
+
+	for ud in state.get("units", []):
+		var uid: int = int(ud.get("id", -1))
+		if uid <= 0:
+			continue
+
+		seen_units[uid] = true
+
+		var unit: Unit = _units_by_net_id.get(uid, null)
+
+		if unit == null or not is_instance_valid(unit):
+			var camp_idx: int = int(ud.get("home", -1))
+			var fallback_camp: Node = _camps[camp_idx] if camp_idx >= 0 and camp_idx < _camps.size() else _camps[0]
+			unit = _spawn_unit(String(ud.get("type", "infantry")), fallback_camp, false, uid, true)
+
+		if unit == null:
+			continue
+
+		unit.owner_id = int(ud.get("owner", 0))
+		unit.unit_type_key = String(ud.get("type", unit.unit_type_key))
+		unit.global_position = ud.get("pos", unit.global_position)
+		unit.hp = float(ud.get("hp", unit.hp))
+		unit.is_alive = bool(ud.get("alive", true))
+
+		var home_idx: int = int(ud.get("home", -1))
+		unit.home_camp = _camps[home_idx] if home_idx >= 0 and home_idx < _camps.size() else null
+
+		var target_idx: int = int(ud.get("target", -1))
+		unit.target_camp = _camps[target_idx] if target_idx >= 0 and target_idx < _camps.size() else null
+
+		if unit.has_method("_update_hp_bar"):
+			unit._update_hp_bar()
+
+	var to_remove: Array = []
+	for uid in _units_by_net_id.keys():
+		if not seen_units.has(uid):
+			to_remove.append(uid)
+
+	for uid in to_remove:
+		var unit = _units_by_net_id[uid]
+		_units_by_net_id.erase(uid)
+		if is_instance_valid(unit):
+			unit.queue_free()
+
+	var winner: int = int(state.get("winner", 0))
+	if winner > 0 and not _game_over:
+		_show_end_game_for_winner(winner)
+
 	_refresh_ui()
-	# Forcer le redraw de l overlay (cercles + nombres d unités)
 	if _overlay:
 		_overlay.queue_redraw()
+
+
+func _get_unit_net_id(unit: Node) -> int:
+	if unit == null or not is_instance_valid(unit):
+		return -1
+
+	if unit.has_meta("net_id"):
+		return int(unit.get_meta("net_id"))
+
+	if not _is_authority():
+		return -1
+
+	var uid: int = _unit_net_id_seq
+	_unit_net_id_seq += 1
+	unit.set_meta("net_id", uid)
+	_units_by_net_id[uid] = unit
+	return uid
+
+
+func _setup_network_proxy(unit: Unit) -> void:
+	unit.set_physics_process(false)
+	unit.set_process(false)
+	if unit.attack_timer:
+		unit.attack_timer.stop()
+	if unit.range_area:
+		unit.range_area.monitoring = false
+		unit.range_area.monitorable = false
+
+
+@rpc("any_peer", "reliable")
+func _rpc_request_unit_order(unit_ids: Array, camp_idx: int, target_pos: Vector2, has_camp: bool, player_id: int) -> void:
+	if not GameConfig.is_host:
+		return
+
+	var units_list: Array = []
+	for uid in unit_ids:
+		var unit: Unit = _units_by_net_id.get(int(uid), null)
+		if unit != null and is_instance_valid(unit) and unit.owner_id == player_id and unit.is_alive:
+			units_list.append(unit)
+
+	if units_list.is_empty():
+		return
+
+	if has_camp and camp_idx >= 0 and camp_idx < _camps.size():
+		_order_units_to_camp(units_list, _camps[camp_idx])
+	else:
+		_order_units_to_position(units_list, target_pos)
+
+	_broadcast_state()
 
 
 func _build_time(unit_type: String) -> float:
@@ -996,17 +1225,7 @@ func _region_owner(camp_indices: Array) -> int:
 func _rpc_show_end_game(winner: int) -> void:
 	if _game_over:
 		return
-	_game_over = true
-	var wp = GameManager.find_player_by_id(winner)
-	var wn : String
-	if wp == null:
-		wn = "Joueur %d" % winner
-	elif wp.is_ai:
-		var _dn : Array = ["IA", "IA — " + UIUtils.lt("diff_easy"), "IA — " + UIUtils.lt("diff_med"), "IA — " + UIUtils.lt("diff_hard")]
-		wn = _dn[wp.ai_level] if wp.ai_level < _dn.size() else "IA"
-	else:
-		wn = wp.player_name
-	_ui.show_victory(wn, {})
+	_show_end_game_for_winner(winner)
 
 
 func _check_victory() -> void:
@@ -1021,10 +1240,39 @@ func _check_victory() -> void:
 	elif not p2_has_camp: _end_game(1)  # joueur 1 gagne
 
 
+func _get_winner_id() -> int:
+	for p in [1, 2]:
+		for c in _camps:
+			if is_instance_valid(c) and c.owner_id == p:
+				return p
+	return 0
+
+
+func _show_end_game_for_winner(winner: int, winner_stats: Dictionary = {}) -> void:
+	_game_over = true
+	_winner_id = winner
+	var winner_player = GameManager.find_player_by_id(winner)
+	var winner_name: String
+
+	if winner_player == null:
+		winner_name = "Joueur %d" % winner
+	elif winner_player.is_ai:
+		var _dn : Array = ["IA", "IA — " + UIUtils.lt("diff_easy"), "IA — " + UIUtils.lt("diff_med"), "IA — " + UIUtils.lt("diff_hard")]
+		winner_name = _dn[winner_player.ai_level] if winner_player.ai_level < _dn.size() else "IA"
+	else:
+		winner_name = winner_player.player_name
+
+	if GameConfig.mode == "multi" and GameConfig.token != "":
+		Matchmaker.update_stats(GameConfig.token, winner == local_player_id)
+
+	_ui.show_victory(winner_name, winner_stats)
+
+
 func _end_game(winner: int) -> void:
 	if _game_over:
 		return
 	_game_over = true
+	_winner_id = winner
 	# Sync l écran de fin sur tous les peers
 	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
 		_rpc_show_end_game.rpc(winner)
@@ -1077,9 +1325,9 @@ func _end_game(winner: int) -> void:
 	else:
 		winner_name = winner_player.player_name
 
-	# Le 2e argument doit être un int.
-	# On met 0 car le jeu n'est plus en tour par tour.
-	_ui.show_victory(winner_name, winner_stats)
+	_show_end_game_for_winner(winner, winner_stats)
+	if GameConfig.mode == "multi" and GameConfig.is_host:
+		_broadcast_state()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # UI
@@ -1168,30 +1416,53 @@ func _refresh_leaderboard() -> void:
 		card.add_child(sl)
 
 
-func _spawn_unit(unit_type: String, camp: Node, attach_to_camp: bool = true) -> Unit:
+func _spawn_unit(unit_type: String, camp: Node, attach_to_camp: bool = true, net_id: int = -1, is_proxy: bool = false) -> Unit:
 	if not UNIT_SCENES.has(unit_type):
 		print("[Main] Type d'unité inconnu : ", unit_type)
 		return null
+
 	var scene = load(UNIT_SCENES[unit_type]) as PackedScene
 	if not scene:
 		print("[Main] Impossible de charger la scène : ", UNIT_SCENES[unit_type])
 		return null
+
 	var unit = scene.instantiate()
 	var offset := Vector2(randf_range(-55, 55), randf_range(-55, 55))
 	unit.global_position = camp.global_position + offset
 	unit.z_index = 200
+
 	if unit.has_method("setup"):
 		unit.setup(camp.owner_id, camp if attach_to_camp else null, unit_type)
 	else:
 		unit.owner_id = camp.owner_id
+
 	add_child(unit)
+
+	var uid: int = net_id
+	if uid <= 0:
+		uid = _unit_net_id_seq
+		_unit_net_id_seq += 1
+	unit.set_meta("net_id", uid)
+	_units_by_net_id[uid] = unit
+
+	if is_proxy:
+		_setup_network_proxy(unit)
+
 	if attach_to_camp and camp.has_method("register_unit"):
 		camp.register_unit(unit, true)
-	if unit.has_signal("unit_died") and not unit.unit_died.is_connected(_on_unit_died):
+
+	if not is_proxy and unit.has_signal("unit_died") and not unit.unit_died.is_connected(_on_unit_died):
 		unit.unit_died.connect(_on_unit_died)
+
 	return unit
 
 func _on_unit_died(unit: Unit, killer_owner_id: int, killer_unit: Node) -> void:
+	if not _is_authority():
+		return
+
+	if unit.has_meta("net_id"):
+		_units_by_net_id.erase(int(unit.get_meta("net_id")))
+
 	_clear_dead_units_from_selection()
 	if unit.owner_id >= 1 and unit.owner_id <= 2:
 		_units_lost[unit.owner_id - 1] += 1
@@ -1227,6 +1498,8 @@ func _capture_camp(camp: Node, new_owner_id: int) -> void:
 	camp.production_queue.clear()
 	camp.unit_type = "infantry"
 	_log("✓ %s capturé par %s" % [camp.camp_name, "Neutre" if new_owner_id == 0 else "Joueur %d" % new_owner_id])
+	if GameConfig.mode == "multi" and GameConfig.is_host:
+		_broadcast_state()
 
 func _process_unit_camp_orders() -> void:
 	for unit in get_tree().get_nodes_in_group("units"):

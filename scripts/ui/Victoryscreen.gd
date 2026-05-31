@@ -32,8 +32,18 @@ var _parent : Node
 func initialize(parent: Node, u: Node) -> void:
 	U       = u
 	_parent = parent
+	_ensure_end_layer()
 	_build_victory_screen()
 	_build_defeat_screen()
+
+func _ensure_end_layer() -> void:
+	if _end_layer != null and is_instance_valid(_end_layer):
+		return
+
+	_end_layer = CanvasLayer.new()
+	_end_layer.name = "EndScreenLayer"
+	_end_layer.layer = 999
+	_parent.add_child(_end_layer)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -108,8 +118,9 @@ func show_victory(winner_name: String, stats: Dictionary = {}) -> void:
 
 	_fill_stats_panel(victory_screen, winner_name, stats, true)
 
-	_parent.move_child(victory_screen, _parent.get_child_count() - 1)
+	_end_layer.layer = 999
 	victory_screen.visible = true
+	victory_screen.move_to_front()
 	Sound.play("victory")
 
 
@@ -124,8 +135,9 @@ func show_defeat(winner_name: String, stats: Dictionary = {}) -> void:
 	if _defeat_quit_btn:
 		_defeat_quit_btn.text = U.lt("quit_btn")
 
-	_parent.move_child(defeat_screen, _parent.get_child_count() - 1)
+	_end_layer.layer = 999
 	defeat_screen.visible = true
+	defeat_screen.move_to_front()
 
 	var sub : Label = defeat_screen.get_node_or_null("WinnerLabel")
 	if sub:
@@ -222,8 +234,9 @@ func _build_victory_screen() -> void:
 	var ov := StyleBoxFlat.new()
 	ov.bg_color = Color(0, 0, 0, 0.80)
 	victory_screen.add_theme_stylebox_override("panel", ov)
-	_parent.add_child(victory_screen)
+	_end_layer.add_child(victory_screen)
 	victory_screen.z_index = 10000
+	victory_screen.z_as_relative = false
 	victory_screen.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Panneau central
@@ -327,8 +340,9 @@ func _build_defeat_screen() -> void:
 	var ov := StyleBoxFlat.new()
 	ov.bg_color = Color(0.0, 0.0, 0.0, 0.90)
 	defeat_screen.add_theme_stylebox_override("panel", ov)
-	_parent.add_child(defeat_screen)
+	_end_layer.add_child(defeat_screen)
 	defeat_screen.z_index = 10000
+	defeat_screen.z_as_relative = false
 	defeat_screen.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Panneau central
