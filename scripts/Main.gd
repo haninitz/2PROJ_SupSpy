@@ -1,12 +1,8 @@
 extends Node2D
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONSTANTES
-# ─────────────────────────────────────────────────────────────────────────────
 const INCOME_INTERVAL : float = 12.0
 const MAX_QUEUE       : int   = 3
 const PLAYER_NAMES    := ["Clover", "Adversaire"]
-
 const UNIT_SCENES := {
 	"infantry"   : "res://assets/units/fantassin.tscn",
 	"range"      : "res://assets/units/tir_distance.tscn",
@@ -19,29 +15,24 @@ const UNIT_SCENES := {
 	"woohp_cruiser"  : "res://assets/units/fregate.tscn",
 	"shadow_vessel"  : "res://assets/units/destroyer.tscn",
 }
-
 const CAMP_CLICK_RADIUS : float = 145.0
 const UNIT_CLICK_RADIUS : float = 30.0
 const CAMP_CAPTURE_RADIUS : float = 90.0
 const UNIT_FORMATION_SPACING : float = 34.0
-
 const BASIC_LAND_UNITS := ["infantry", "range", "support", "healer"]
 const ADVANCED_LAND_UNITS := ["heavy", "anti_armor", "mortar"]
 const SEA_UNITS := ["spy_yacht", "woohp_cruiser", "shadow_vessel"]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ÉTAT
-# ─────────────────────────────────────────────────────────────────────────────
-var _camps          : Array = []   # Array[Camp] — nodes du groupe "camps"
-var camps           : Array :   # alias public pour minimap.gd
+var _camps          : Array = []   
+var camps           : Array :   #pour la minimap
 	get: return _camps
-var _gold           : Array = [0, 100000, 150]  # index = owner_id (0=neutre,1=j1,2=j2)
+var _gold           : Array = [0, 100000, 150]  
 var local_player_id: int = 1
 var _ai_enabled: bool = false
 var _ai_player_id: int = 2
 var _ai_timer: float = 0.0
 var _ai_interval: float = 3.0
-var _selected       : Node  = null # Camp sélectionné
+var _selected       : Node  = null 
 var _map_index      : int   = 0
 var _game_over      : bool  = false
 var _income_timer   : float = 0.0
@@ -50,39 +41,23 @@ var _selected_units : Array = []
 var _drag_start     : Vector2 = Vector2.ZERO
 var _drag_end       : Vector2 = Vector2.ZERO
 var _is_dragging    : bool = false
-
 var _unit_net_id_seq : int = 1
 var _units_by_net_id : Dictionary = {}
 var _pending_initial_sync_time : float = 0.0
 var _ai_units_per_attack : int = 2
 var _ai_recruit_choices : Array = ["infantry", "range"]
 var _winner_id : int = 0
-
-
-# ── Statistiques de fin de partie ────────────────────────────────────────────
 var _game_start_time : float = 0.0
-var _camps_peak      : Array = [0, 0]   # max camps possédés simultanément
+var _camps_peak      : Array = [0, 0]   
 var _income_peak     : Array = [0, 0]
 var _units_lost      : Array = [0, 0]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# RÉFÉRENCES
-# ─────────────────────────────────────────────────────────────────────────────
 @onready var _ui : CanvasLayer = $UI
 
-# ─────────────────────────────────────────────────────────────────────────────
-# INIT
-# ─────────────────────────────────────────────────────────────────────────────
 func _ready() -> void:
 	add_to_group("main_node")
 	_ui = $UI
-	# Les signaux doivent être connectés AVANT que le splash émette map_selected.
-	# UI._ready() tourne avant Main._ready() (enfant avant parent en Godot 4),
-	# donc _ui est déjà initialisé ici.
-	# Le splash (UI._ready) appelle _on_splash_finished() → start_from_online()
-	# → map_selected.emit() → _on_map_selected() → _start_game() ✓
 	_connect_ui()
-
 
 func _connect_ui() -> void:
 	if not is_instance_valid(_ui):
@@ -98,11 +73,9 @@ func _connect_ui() -> void:
 	if _ui.has_signal("squads_selected"):
 		_ui.squads_selected.connect(_on_squads_selected)
 
-
 func _on_map_selected(index: int) -> void:
 	_map_index = index
 	_start_game()
-
 
 func _start_game() -> void:
 	_game_over = false
@@ -201,8 +174,6 @@ func _start_game() -> void:
 	_overlay.main = self
 	_overlay.queue_redraw()
 
-	# En multi, le client annonce à l'hôte qu'il a fini de construire ses camps.
-	# L'hôte lui renverra alors l'état complet (évite la course de synchro).
 	if GameConfig.mode == "multi" and not GameConfig.is_host and multiplayer.multiplayer_peer != null:
 		_rpc_client_ready.rpc_id(1)
 
@@ -220,7 +191,6 @@ func _get_team_index_by_name(team_name: String) -> int:
 		if team.get("name", "") == team_name:
 			return i
 	return 0
-
 
 func _is_authority() -> bool:
 	return GameConfig.mode != "multi" or GameConfig.is_host
@@ -249,10 +219,6 @@ func _configure_ai_difficulty() -> void:
 		" units_per_attack=", _ai_units_per_attack,
 		" choices=", _ai_recruit_choices)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# BOUCLE
-# ─────────────────────────────────────────────────────────────────────────────
-# ── Sync multijoueur ─────────────────────────────────────────────────────────
 const SYNC_INTERVAL : float = 0.5
 var _sync_timer     : float = 0.0
 
@@ -316,9 +282,6 @@ func _process(delta: float) -> void:
 	if _overlay:
 		_overlay.queue_redraw()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# INPUT
-# ─────────────────────────────────────────────────────────────────────────────
 func _input(event: InputEvent) -> void:
 	if _game_over or _camps.is_empty():
 		return
@@ -600,21 +563,12 @@ func _get_owner_color(owner_id: int) -> Color:
 
 	return color
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# COMBAT
-# L attaquant calcule le résultat (randi unique) et envoie le résultat exact
-# à tous les peers. Pas de recalcul côté client (évite la divergence rng).
-# ─────────────────────────────────────────────────────────────────────────────
 func _do_attack(src: Node, tgt: Node, deselect_after: bool = true) -> void:
 	var src_idx : int = _camps.find(src)
 	var tgt_idx : int = _camps.find(tgt)
 	var old_owner : int = tgt.owner_id
-
-	# Calcul local (aléatoire, une seule fois chez l attaquant)
 	Combat.resolve(src, tgt)
 
-	# En multi : envoyer le RÉSULTAT (pas les paramètres) à tous les peers
 	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
 		_rpc_sync_attack_result.rpc(
 			src_idx, tgt_idx,
@@ -638,7 +592,6 @@ func _rpc_sync_attack_result(
 		src_idx: int, tgt_idx: int,
 		src_owner: int, src_units: int, src_type: String,
 		tgt_owner: int, tgt_units: int, tgt_type: String) -> void:
-	# Le peer distant applique directement le résultat reçu (sans recalcul rng)
 	if src_idx < 0 or src_idx >= _camps.size(): return
 	if tgt_idx < 0 or tgt_idx >= _camps.size(): return
 	var src = _camps[src_idx]
@@ -666,7 +619,6 @@ func _rpc_sync_attack_result(
 		_log("✗ Attaque repoussée")
 	if _overlay: _overlay.queue_redraw()
 
-
 func _camp_to_dict(camp: Node) -> Dictionary:
 	return {
 		"name"     : camp.camp_name,
@@ -681,7 +633,6 @@ func _camp_to_dict(camp: Node) -> Dictionary:
 		"queue"    : camp.production_queue,
 		"color"    : _get_owner_color(camp.owner_id)
 	}
-
 
 #ia
 func _run_ai_tick() -> void:
@@ -781,9 +732,6 @@ func _ai_find_best_target(attacker: Node, targets: Array) -> Node:
 			best_target = target
 
 	return best_target
-# ─────────────────────────────────────────────────────────────────────────────
-# RECRUTEMENT
-# ─────────────────────────────────────────────────────────────────────────────
 func _on_recruit_pressed(unit_type: String) -> void:
 	print("[Main] Recrutement demandé : %s" % unit_type)
 	if _selected == null:
@@ -798,9 +746,7 @@ func _on_recruit_pressed(unit_type: String) -> void:
 	if GameConfig.mode == "multi" and not GameConfig.is_host:
 		_rpc_request_recruit.rpc(camp_idx, unit_type, local_player_id)
 		return
-
 	_perform_recruit(local_player_id, camp_idx, unit_type)
-
 
 @rpc("any_peer", "reliable")
 func _rpc_request_recruit(camp_idx: int, unit_type: String, player_id: int) -> void:
@@ -808,7 +754,6 @@ func _rpc_request_recruit(camp_idx: int, unit_type: String, player_id: int) -> v
 		return
 	_perform_recruit(player_id, camp_idx, unit_type)
 	_broadcast_state()
-
 
 func _perform_recruit(player_id: int, camp_idx: int, unit_type: String) -> void:
 	if camp_idx < 0 or camp_idx >= _camps.size():
@@ -837,16 +782,13 @@ func _perform_recruit(player_id: int, camp_idx: int, unit_type: String) -> void:
 
 	if player_id < _gold.size():
 		_gold[player_id] = player.gold
-
 	_resolve_recruit(camp_idx, unit_type)
-
 
 @rpc("any_peer", "reliable")
 func _rpc_recruit(camp_idx: int, unit_type: String) -> void:
 	if not GameConfig.is_host:
 		return
 	_perform_recruit(local_player_id, camp_idx, unit_type)
-
 
 func _resolve_recruit(camp_idx: int, unit_type: String) -> void:
 	if camp_idx < 0 or camp_idx >= _camps.size():
@@ -869,11 +811,6 @@ func _can_recruit_unit_at_camp(camp: Node, unit_type: String) -> bool:
 		return ADVANCED_LAND_UNITS.has(unit_type)
 	return BASIC_LAND_UNITS.has(unit_type)
 
-# =============================================================================
-#  ASSIGNATION ALÉATOIRE DES CAMPS
-#  Règle sujet : chaque joueur reçoit le même nombre de camps aléatoirement,
-#  sans qu aucun joueur ne possède une région entière dès le départ.
-# =============================================================================
 func _randomize_camp_owners() -> void:
 	if _camps.size() < 2:
 		return
@@ -900,7 +837,6 @@ func _randomize_camp_owners() -> void:
 	_refresh_ui()
 	if _overlay:
 		_overlay.queue_redraw()
-
 
 func _pick_random_start_camps() -> Array:
 	var valid_camps: Array = []
@@ -938,7 +874,6 @@ func _pick_random_start_camps() -> Array:
 
 	return best_pair
 
-
 func _set_camp_owner(camp: Node, new_owner_id: int) -> void:
 	if not is_instance_valid(camp):
 		return
@@ -961,7 +896,6 @@ func _fix_complete_regions(regions: Array) -> void:
 		var camp_indices : Array = region.get("camps", [])
 		if camp_indices.size() < 2:
 			continue
-		# Vérifier si tous les camps de la région ont le même propriétaire non-neutre
 		var first_owner : int = _camps[camp_indices[0]].owner_id
 		if first_owner == 0:
 			continue
@@ -971,18 +905,12 @@ func _fix_complete_regions(regions: Array) -> void:
 				all_same = false
 				break
 		if all_same:
-			# Rendre le dernier camp de la région neutre pour casser le bonus
 			var last_ci : int = camp_indices[camp_indices.size() - 1]
 			var camp    = _camps[last_ci]
 			camp.owner_id = 0
 			if camp.has_method("change_owner"):
 				camp.change_owner(0)
 			print("[Main] Région '%s' brisée — camp %d → neutre" % [region.get("name","?"), last_ci])
-
-
-# =============================================================================
-#  SYNC MULTIJOUEUR — broadcast d état complet depuis l hote
-# =============================================================================
 
 func _broadcast_state() -> void:
 	if GameConfig.mode != "multi" or not GameConfig.is_host:
@@ -994,7 +922,6 @@ func _broadcast_state() -> void:
 
 @rpc("any_peer", "reliable")
 func _rpc_client_ready() -> void:
-	# Appelé par le client quand ses camps sont construits → on lui pousse l'état.
 	if not GameConfig.is_host:
 		return
 	_broadcast_state()
@@ -1053,8 +980,6 @@ func _rpc_receive_full_state(state: Dictionary) -> void:
 
 
 func _apply_sync_state(state: Dictionary) -> void:
-	# Le 1er état de l'hôte peut arriver avant que _start_game ait construit nos
-	# camps côté client. Dans ce cas on ignore : le prochain broadcast suivra.
 	if _camps.is_empty():
 		return
 	if state.has("gold"):
@@ -1084,9 +1009,6 @@ func _apply_sync_state(state: Dictionary) -> void:
 		camp.units = int(cd.get("u", camp.units))
 		camp.unit_type = String(cd.get("ut", camp.unit_type))
 		camp.production_queue = cd.get("q", []).duplicate(true)
-	# Recalcule owned_camps de chaque joueur d'après les propriétaires
-	# synchronisés, sinon le panneau "X camps" du client reste figé sur
-	# l'état initial de la map (ex. affiche 2 camps au lieu de 1).
 	if GameManager and GameManager.has_method("_assign_camps_to_players"):
 		GameManager._assign_camps_to_players()
 
@@ -1098,11 +1020,6 @@ func _apply_sync_state(state: Dictionary) -> void:
 			continue
 
 		seen_units[uid] = true
-
-		# is_instance_valid() gère à la fois null ET une instance libérée.
-		# On n'utilise JAMAIS "!= null" ici : en Godot 4 une instance libérée
-		# peut être considérée == null, ce qui laisserait passer une instance
-		# morte vers la variable typée `unit` → crash "freed instance".
 		var stored = _units_by_net_id.get(uid, null)
 		var unit: Unit = null
 		if is_instance_valid(stored):
@@ -1167,7 +1084,6 @@ func _apply_sync_state(state: Dictionary) -> void:
 	if _overlay:
 		_overlay.queue_redraw()
 
-
 func _get_unit_net_id(unit: Node) -> int:
 	if unit == null or not is_instance_valid(unit):
 		return -1
@@ -1177,13 +1093,11 @@ func _get_unit_net_id(unit: Node) -> int:
 
 	if not _is_authority():
 		return -1
-
 	var uid: int = _unit_net_id_seq
 	_unit_net_id_seq += 1
 	unit.set_meta("net_id", uid)
 	_units_by_net_id[uid] = unit
 	return uid
-
 
 func _setup_network_proxy(unit: Unit) -> void:
 	unit.set_physics_process(false)
@@ -1193,7 +1107,6 @@ func _setup_network_proxy(unit: Unit) -> void:
 	if unit.range_area:
 		unit.range_area.monitoring = false
 		unit.range_area.monitorable = false
-
 
 @rpc("any_peer", "reliable")
 func _rpc_request_unit_order(unit_ids: Array, camp_idx: int, target_pos: Vector2, has_camp: bool, player_id: int) -> void:
@@ -1213,9 +1126,7 @@ func _rpc_request_unit_order(unit_ids: Array, camp_idx: int, target_pos: Vector2
 		_order_units_to_camp(units_list, _camps[camp_idx], player_id)
 	else:
 		_order_units_to_position(units_list, target_pos, player_id)
-
 	_broadcast_state()
-
 
 func _build_time(unit_type: String) -> float:
 	return UnitDefs.TYPES.get(unit_type, {}).get("build_time", 5.0)
@@ -1224,10 +1135,6 @@ func _build_time(unit_type: String) -> float:
 func _on_end_turn() -> void:
 	pass
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# REVENUS
-# ─────────────────────────────────────────────────────────────────────────────
 func _distribute_income() -> void:
 	if GameConfig.mode == "multi" and not GameConfig.is_host:
 		return
@@ -1264,16 +1171,11 @@ func _region_owner(camp_indices: Array) -> int:
 			return -1
 	return owner if owner != -2 else -1
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# VICTOIRE
-# ─────────────────────────────────────────────────────────────────────────────
 @rpc("any_peer", "reliable")
 func _rpc_show_end_game(winner: int) -> void:
 	if _game_over:
 		return
 	_show_end_game_for_winner(winner)
-
 
 func _check_victory() -> void:
 	var p1_has_camp := false
@@ -1283,9 +1185,8 @@ func _check_victory() -> void:
 			continue
 		if c.owner_id == 1:   p1_has_camp = true
 		elif c.owner_id == 2: p2_has_camp = true
-	if not p1_has_camp:   _end_game(2)  # joueur 2 gagne
-	elif not p2_has_camp: _end_game(1)  # joueur 1 gagne
-
+	if not p1_has_camp:   _end_game(2) 
+	elif not p2_has_camp: _end_game(1)  
 
 func _get_winner_id() -> int:
 	for p in [1, 2]:
@@ -1293,7 +1194,6 @@ func _get_winner_id() -> int:
 			if is_instance_valid(c) and c.owner_id == p:
 				return p
 	return 0
-
 
 func _show_end_game_for_winner(winner: int, winner_stats: Dictionary = {}) -> void:
 	_game_over = true
@@ -1320,11 +1220,9 @@ func _end_game(winner: int) -> void:
 		return
 	_game_over = true
 	_winner_id = winner
-	# Sync l écran de fin sur tous les peers
 	if GameConfig.mode == "multi" and multiplayer.multiplayer_peer != null:
 		_rpc_show_end_game.rpc(winner)
 
-	# ── Calcul des stats finales ──────────────────────────────────────────────
 	var now: float = Time.get_ticks_msec() / 1000.0
 	var duration: float = now - _game_start_time
 
@@ -1336,10 +1234,7 @@ func _end_game(winner: int) -> void:
 			camps_final += 1
 			income_final += c.income_value
 
-	# Comme les joueurs sont maintenant 1 et 2,
-	# mais les tableaux commencent à 0, on convertit.
 	var winner_index: int = winner - 1
-
 	var camps_peak: int = 0
 	var income_peak: int = 0
 	var units_lost: int = 0
@@ -1376,9 +1271,6 @@ func _end_game(winner: int) -> void:
 	if GameConfig.mode == "multi" and GameConfig.is_host:
 		_broadcast_state()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# UI
-# ─────────────────────────────────────────────────────────────────────────────
 func _refresh_ui() -> void:
 	var inc: int = 0
 	var cnt: int = 0
@@ -1389,25 +1281,18 @@ func _refresh_ui() -> void:
 			cnt += 1
 
 	var sel_unit: String = _selected.unit_type if _selected else ""
-
 	var player = GameManager.find_player_by_id(local_player_id)
 	var player_name: String = player.player_name if player else "Joueur"
 	var player_gold: int = player.gold if player else 0
 
-	# Le 2e paramètre doit rester un int.
-	# On met 0 pour remplacer l'ancien tour.
 	_ui.update_hud(player_name, 0, player_gold, inc, cnt, sel_unit, "", local_player_id)
-
 	_refresh_leaderboard()
 
-
 func _refresh_leaderboard() -> void:
-	# Délègue au HUD — évite la duplication et les doublons dus à queue_free() asynchrone
 	if _ui and _ui.has_method("refresh_leaderboard"):
 		_ui.refresh_leaderboard()
 		return
 
-	# Fallback manuel si le HUD n'est pas dispo (ne devrait pas arriver)
 	var hud : CanvasLayer = _ui.hud
 	if not hud:
 		return
@@ -1415,11 +1300,9 @@ func _refresh_leaderboard() -> void:
 	if not lb:
 		return
 
-	# Suppression synchrone
 	for c in lb.get_children():
 		lb.remove_child(c)
 		c.free()
-
 	var COLORS := {1: _get_owner_color(1), 2: _get_owner_color(2)}
 
 	for p in [1, 2]:
@@ -1461,7 +1344,6 @@ func _refresh_leaderboard() -> void:
 		sl.add_theme_font_size_override("font_size", 10)
 		sl.add_theme_color_override("font_color", col)
 		card.add_child(sl)
-
 
 func _spawn_unit(unit_type: String, camp: Node, attach_to_camp: bool = true, net_id: int = -1, is_proxy: bool = false) -> Unit:
 	if not UNIT_SCENES.has(unit_type):
@@ -1606,10 +1488,6 @@ func _log(msg: String) -> void:
 		_ui.add_log(msg)
 	print("[Main] ", msg)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DESSIN (camps par-dessus les TileMaps)
-# ─────────────────────────────────────────────────────────────────────────────
 func _draw_camps(canvas: Node2D) -> void:
 	if _camps.is_empty():
 		return
@@ -1636,9 +1514,6 @@ func _draw_camps(canvas: Node2D) -> void:
 		_game_over,
 		"")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OVERLAY — Node2D dédié au dessin des camps (z_index élevé)
-# ─────────────────────────────────────────────────────────────────────────────
 class CampOverlay extends Node2D:
 	var main : Node = null
 	func _draw() -> void:

@@ -1,12 +1,15 @@
 extends Control
 # choix_mode.gd — SupKonQuest · Totally Spies
-# Simplifié : seulement MULTIJOUEUR EN LIGNE (l'IA se gère depuis le menu principal)
 
 const C_BG     := Color(0.04, 0.02, 0.10)
 const C_PINK   := Color(1.00, 0.20, 0.58)
 const C_PURPLE := Color(0.55, 0.15, 0.85)
 const C_CYAN   := Color(0.00, 0.90, 0.88)
 const C_WHITE  := Color(1.00, 1.00, 1.00)
+
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
 
 func _ready() -> void:
 	_build()
@@ -22,13 +25,13 @@ func _build() -> void:
 	panel.add_theme_stylebox_override("panel", _flat(C_BG, C_CYAN, 2, 14))
 	add_child(panel)
 
-	_title(panel, "MODE DE MISSION", C_CYAN)
+	_title(panel, _lt("choixmode_title"), C_CYAN)
 
-	var btn_multi := _btn(panel, "MULTIJOUEUR EN LIGNE", Vector2(30, 120), C_PINK)
+	var btn_multi := _btn(panel, _lt("choixmode_multi"), Vector2(30, 120), C_PINK)
 	btn_multi.pressed.connect(_on_multi_pressed)
-	_desc(panel, "Affronte des agents du monde entier", Vector2(30, 174))
+	_desc(panel, _lt("choixmode_desc"), Vector2(30, 174))
 
-	var btn_back := _btn(panel, "← Retour", Vector2(30, 228), Color(0.30, 0.20, 0.45))
+	var btn_back := _btn(panel, _lt("back"), Vector2(30, 228), Color(0.30, 0.20, 0.45))
 	btn_back.pressed.connect(_on_back_pressed)
 
 func _on_multi_pressed() -> void:

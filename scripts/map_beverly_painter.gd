@@ -1,20 +1,8 @@
 extends Node2D
-# =============================================================================
-#  map_beverly_painter.gd -- Clover's Beverly Hills Mall
-#
-#  Style : draw_colored_polygon() comme map_tropical
-#  Layout :
-#    - Eau bleue en fond avec vagues animees
-#    - Ile centrale : grand mall + boutiques + jardin
-#    - 4 petites iles autour : boutiques de luxe
-#    - Ponts entre les iles
-#    - Arbres et decorations
-# =============================================================================
 
 const MAP_W : int = 1152
 const MAP_H : int = 620
 
-# ── Couleurs ──────────────────────────────────────────────────────────────────
 const C_OCEAN      := Color(0.10, 0.38, 0.75)
 const C_OCEAN_DARK := Color(0.06, 0.22, 0.55)
 const C_SAND       := Color(0.92, 0.82, 0.60)
@@ -35,13 +23,11 @@ const C_BRIDGE     := Color(0.55, 0.42, 0.28)
 const C_BRIDGE_D   := Color(0.40, 0.30, 0.18)
 const C_FOUNTAIN   := Color(0.40, 0.72, 1.00)
 
-# ── Ile centrale ─────────────────────────────────────────────────────────────
 const MAIN_CX := 576.0
 const MAIN_CY := 310.0
 const MAIN_RX := 220.0
 const MAIN_RY := 175.0
 
-# ── Petites iles ─────────────────────────────────────────────────────────────
 const ISLANDS := [
 	{"cx": 145.0,  "cy": 130.0,  "rx": 72.0, "ry": 58.0},
 	{"cx": 1007.0, "cy": 130.0,  "rx": 72.0, "ry": 58.0},

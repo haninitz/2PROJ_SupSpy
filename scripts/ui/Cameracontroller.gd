@@ -5,24 +5,18 @@ const ZOOM_MIN   : float = 0.4
 const ZOOM_STEP  : float = 0.1
 const PAN_SPEED  : float = 500.0
 const PAN_BUTTON : int   = MOUSE_BUTTON_MIDDLE
-
-# Ajuste ces 4 valeurs selon les vraies limites de ta TileMap
-# = coordonnées tuile × 16
-# Coin haut-gauche de ta map peinte
-const MAP_X : float = -304.0   # tuile_x × 16
-const MAP_Y : float = -192.0   # tuile_y × 16
-const MAP_W : float = 1650.0   # largeur totale en pixels
-const MAP_H : float = 900.0    # hauteur totale en pixels
+const MAP_X : float = -304.0  
+const MAP_Y : float = -192.0   
+const MAP_W : float = 1650.0  
+const MAP_H : float = 900.0   
 
 var _panning    : bool    = false
 var _pan_origin : Vector2 = Vector2.ZERO
 var _cam_origin : Vector2 = Vector2.ZERO
 
-
 func _ready() -> void:
 	zoom     = Vector2(0.8, 0.8)
 	position = Vector2(576, 310)
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -45,7 +39,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and _panning:
 		position = _cam_origin - (event.position - _pan_origin) / zoom.x
 
-
 func _physics_process(delta: float) -> void:
 	var dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_LEFT):  dir.x -= 1.0
@@ -54,7 +47,6 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_DOWN):  dir.y += 1.0
 	if dir != Vector2.ZERO:
 		position += dir.normalized() * PAN_SPEED * delta / zoom.x
-
 
 func _zoom_toward(screen_pos: Vector2, step: float) -> void:
 	var old_zoom : float = zoom.x

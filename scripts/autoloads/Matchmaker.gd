@@ -1,10 +1,4 @@
 extends Node
-# =============================================================================
-#  Matchmaker.gd — SupSpy
-#  Registre LOCAL des rooms en mémoire.
-#  Tente aussi de synchroniser avec le serveur WebSocket distant (best-effort).
-#  Si le serveur est hors ligne, tout fonctionne quand même en local/LAN.
-# =============================================================================
 
 const SERVER_URL := "wss://sup-kon-quest-matchmaker.onrender.com"
 
@@ -12,7 +6,6 @@ signal room_created(room_name: String)
 signal room_found(ip: String)
 signal room_not_found
 signal room_list_received(rooms: Array)
-
 signal register_success(token: String, pseudo: String, username: String)
 signal login_success(token: String, pseudo: String, username: String, wins: int, losses: int)
 signal token_valid(pseudo: String, username: String, wins: int, losses: int)
@@ -22,17 +15,10 @@ signal stats_updated
 signal leaderboard_received(players: Array)
 signal matchmaker_error
 
-# ── Registre local des rooms ──────────────────────────────────────────────────
 var _local_rooms : Dictionary = {}
-
-# ── WebSocket (best-effort) ───────────────────────────────────────────────────
 var socket         := WebSocketPeer.new()
 var connected      := false
-# File des actions en attente d'envoi. Plusieurs appels successifs (ex. create
-# puis update) ne s'écrasent plus : ils sont tous empilés et envoyés dans
-# l'ordre dès que la connexion est ouverte.
 var _pending_queue : Array[String] = []
-
 
 func _ready() -> void:
 	set_process(true)
@@ -52,7 +38,6 @@ func _process(_delta: float) -> void:
 				connected = false
 				print("[Matchmaker] Déconnecté du serveur distant")
 
-# Empile une action et s'assure que la connexion est (ou va être) ouverte.
 func _queue_action(payload: Dictionary) -> void:
 	_pending_queue.append(JSON.stringify(payload))
 	_connect_to_server()
@@ -62,21 +47,14 @@ func _connect_to_server() -> void:
 		WebSocketPeer.STATE_OPEN:
 			_send_pending()
 		WebSocketPeer.STATE_CONNECTING:
-			# Connexion en cours : on ne fait rien, la file sera vidée à
-			# l'ouverture (dans _process → STATE_OPEN).
 			pass
 		_:
 			socket    = WebSocketPeer.new()
 			connected = false
 			socket.connect_to_url(SERVER_URL)
 
-# =============================================================================
-#  ROOMS — API publique
-# =============================================================================
-
 func create_room(room_name: String, ip: String, format: String,
 		map: String, max_players: int) -> void:
-	# Éviter de recréer une room qui existe déjà (double appel hôte)
 	if _local_rooms.has(room_name):
 		print("[Matchmaker] Room '%s' déjà enregistrée — création ignorée" % room_name)
 		return
@@ -151,14 +129,8 @@ func delete_room(room_name: String) -> void:
 	print("[Matchmaker] Room '%s' supprimée localement" % room_name)
 	_queue_action({"action": "delete", "room": room_name})
 	
-# Indique si une room (dictionnaire renvoyé par le serveur ou le registre local)
-# est pleine. Calcul local : on ne fait pas confiance au champ "full" du serveur.
 func is_room_full(room: Dictionary) -> bool:
 	return int(room.get("players", 0)) >= int(room.get("max_players", 2))
-
-# =============================================================================
-#  COMPTES
-# =============================================================================
 
 func register(username: String, password: String, pseudo: String) -> void:
 	_queue_action({
@@ -183,12 +155,7 @@ func update_stats(token: String, won: bool) -> void:
 func get_leaderboard() -> void:
 	_queue_action({"action": "leaderboard"})
 
-# =============================================================================
-#  MESSAGES SERVEUR DISTANT
-# =============================================================================
-
 func _send_pending() -> void:
-	# Vide TOUTE la file, pas seulement le premier élément.
 	while not _pending_queue.is_empty():
 		var action: String = _pending_queue.pop_front()
 		socket.send_text(action)
@@ -233,10 +200,8 @@ func _on_message(msg: String) -> void:
 			var merged : Dictionary = {}
 			for r in remote_rooms:
 				merged[r.get("name", "")] = r
-			# Les rooms locales priment sur les rooms distantes
 			for rn in _local_rooms:
 				merged[rn] = _local_rooms[rn]
 			room_list_received.emit(merged.values())
 		"deleted":
-			# Confirmation serveur — rien à faire, déjà supprimé localement
 			pass

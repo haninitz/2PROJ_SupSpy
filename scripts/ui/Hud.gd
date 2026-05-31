@@ -1,24 +1,18 @@
 class_name HUD
 extends CanvasLayer
-# ─────────────────────────────────────────────────────────────────────────────
-#  HUD.gd — SupKonQuest · Totally Spies Edition
-# ─────────────────────────────────────────────────────────────────────────────
 
 var U : Node
-
 signal recruit_pressed(unit_type: String)
 signal pause_requested
 
 const MAX_LOG : int = 6
 
-# ── Références nœuds ──────────────────────────────────────────────────────────
 var info_label   : Label
 var gold_label   : Label
 var income_label : Label
 var camps_label  : Label
 var msg_label    : Label
 var unit_label   : Label
-
 var leaderboard_container : VBoxContainer
 var _lb_bg      : Panel
 var _minimap    : Node2D
@@ -27,38 +21,28 @@ var camp_label  : Label
 var recruit_btns : Array = []
 var _pause_btn  : Button = null
 var _lb_title   : Label  = null
-
-# Panneau stats unité — reconstruit avec style
 var selection_panel  : Panel = null
 var _sel_bg          : Panel = null
 var unit_count_label : Label = null
 var unit_stats_label : Label = null
 var spell_button     : Button = null
-# Barres HP / stats visuelles dans le panneau
 var _sel_hp_bg  : ColorRect = null
 var _sel_hp_fg  : ColorRect = null
 var _sel_dmg_lbl : Label = null
 var _sel_spd_lbl : Label = null
 var _sel_rng_lbl : Label = null
 var _sel_type_lbl: Label = null
-
 var event_log         : RichTextLabel
 var _log_btn          : Button = null
 var _log_panel_open   : bool = false
 var _stats_bg         : Panel = null
-
 var _log_entries : Array = []
 var _lb_refresh_acc : float = 0.0
-
-# Notification région capturée
 var _notif_panel  : Panel = null
 var _notif_label  : Label = null
 var _notif_timer  : float = 0.0
 const NOTIF_DURATION : float = 3.0
-
-# Camp actuellement sélectionné (pour maj des progress bars)
 var _current_camp = null
-
 
 func setup(u: Node) -> void:
 	U = u
@@ -71,10 +55,8 @@ func setup(u: Node) -> void:
 	_build_minimap()
 	_build_notif_panel()
 
-
 func _ready() -> void:
 	pass
-
 
 func _process(delta: float) -> void:
 	_lb_refresh_acc += delta
@@ -84,7 +66,6 @@ func _process(delta: float) -> void:
 	_refresh_stats()
 	_update_build_progress()
 
-	# Notification région — fade out
 	if _notif_timer > 0.0:
 		_notif_timer -= delta
 		if _notif_timer <= 0.5:
@@ -92,11 +73,6 @@ func _process(delta: float) -> void:
 		if _notif_timer <= 0.0:
 			_notif_panel.visible = false
 			_notif_panel.modulate.a = 1.0
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  CONSTRUCTION
-# ─────────────────────────────────────────────────────────────────────────────
 
 func _build_stats_bar() -> void:
 	_stats_bg = Panel.new()
@@ -210,14 +186,12 @@ func _build_recruit_bar() -> void:
 	recruit_bar.visible  = false
 	add_child(recruit_bar)
 
-	# Fond semi-transparent
 	var bar_bg := ColorRect.new()
 	bar_bg.color    = Color(0.04, 0.02, 0.10, 0.82)
 	bar_bg.position = Vector2(0, 0)
 	bar_bg.size     = Vector2(U.WIN_W - 190, 100)
 	recruit_bar.add_child(bar_bg)
 
-	# Ligne de séparation en haut
 	var sep := ColorRect.new()
 	sep.color    = U.C_PINK
 	sep.position = Vector2(0, 0)
@@ -244,14 +218,11 @@ func _build_recruit_bar() -> void:
 		var label  : String = stats.get("label", unit_type)
 		var price  : int    = stats.get("price", 0)
 		var btime  : float  = stats.get("build_time", 5.0)
-
-		# Conteneur pour bouton + barre de build
 		var container := Control.new()
 		container.position = Vector2(x, 28)
 		container.size     = Vector2(U.BTN_W, 66)
 		recruit_bar.add_child(container)
 
-		# Bouton principal
 		var b := Button.new()
 		b.text     = "%s\n%d G  •  %.0fs" % [label, price, btime]
 		b.position = Vector2(0, 0)
@@ -273,14 +244,12 @@ func _build_recruit_bar() -> void:
 		recruit_btns.append(b)
 		b.set_meta("container", container)
 
-		# Fond barre de progression
 		var prog_bg := ColorRect.new()
 		prog_bg.color    = Color(0.12, 0.08, 0.18, 0.95)
 		prog_bg.position = Vector2(0, 52)
 		prog_bg.size     = Vector2(U.BTN_W, 7)
 		container.add_child(prog_bg)
 
-		# Barre de progression (cyan)
 		var prog_fg := ColorRect.new()
 		prog_fg.color    = U.C_CYAN
 		prog_fg.position = Vector2(0, 52)
@@ -290,7 +259,6 @@ func _build_recruit_bar() -> void:
 		container.add_child(prog_fg)
 		b.set_meta("prog_fg", prog_fg)
 
-		# Label temps restant (ex: "2.4s")
 		var time_lbl := Label.new()
 		time_lbl.position = Vector2(0, 52)
 		time_lbl.size     = Vector2(U.BTN_W, 12)
@@ -300,12 +268,10 @@ func _build_recruit_bar() -> void:
 		time_lbl.visible = false
 		container.add_child(time_lbl)
 		b.set_meta("time_lbl", time_lbl)
-
 		x += U.BTN_W + 4
 
 
 func _build_selection_panel() -> void:
-	# Panneau stylisé — positionné au-dessus de la barre de recrutement
 	selection_panel          = Panel.new()
 	selection_panel.position = Vector2(8, U.MAP_H - 108)
 	selection_panel.size     = Vector2(400, 100)
@@ -318,7 +284,6 @@ func _build_selection_panel() -> void:
 	selection_panel.add_theme_stylebox_override("panel", sp_style)
 	add_child(selection_panel)
 
-	# En-tête : nombre d'unités + bouton spell
 	var header := Label.new()
 	header.name     = "Header"
 	header.position = Vector2(10, 6)
@@ -340,7 +305,6 @@ func _build_selection_panel() -> void:
 	spell_button.pressed.connect(_on_spell_pressed)
 	selection_panel.add_child(spell_button)
 
-	# Barre de cooldown (fond + remplissage)
 	var cd_bg := ColorRect.new()
 	cd_bg.name     = "CooldownBg"
 	cd_bg.color    = Color(0.12, 0.08, 0.22, 0.95)
@@ -365,14 +329,12 @@ func _build_selection_panel() -> void:
 	cd_lbl.visible = false
 	selection_panel.add_child(cd_lbl)
 
-	# Séparateur
 	var div := ColorRect.new()
 	div.color    = Color(U.C_PINK.r, U.C_PINK.g, U.C_PINK.b, 0.35)
 	div.position = Vector2(10, 30)
 	div.size     = Vector2(380, 1)
 	selection_panel.add_child(div)
 
-	# Barre HP (fond + remplissage)
 	var hp_label := Label.new()
 	hp_label.name     = "HpLabel"
 	hp_label.text     = "HP"
@@ -381,13 +343,11 @@ func _build_selection_panel() -> void:
 	hp_label.add_theme_font_size_override("font_size", 10)
 	hp_label.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
 	selection_panel.add_child(hp_label)
-
 	_sel_hp_bg          = ColorRect.new()
 	_sel_hp_bg.color    = Color(0.15, 0.10, 0.22, 0.95)
 	_sel_hp_bg.position = Vector2(34, 40)
 	_sel_hp_bg.size     = Vector2(180, 8)
 	selection_panel.add_child(_sel_hp_bg)
-
 	_sel_hp_fg          = ColorRect.new()
 	_sel_hp_fg.color    = Color(0.20, 0.88, 0.35)
 	_sel_hp_fg.position = Vector2(34, 40)
@@ -401,8 +361,6 @@ func _build_selection_panel() -> void:
 	hp_val_lbl.add_theme_font_size_override("font_size", 10)
 	hp_val_lbl.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
 	selection_panel.add_child(hp_val_lbl)
-
-	# Ligne stats texte (DMG / SPD / RNG / Type)
 	unit_stats_label          = Label.new()
 	unit_stats_label.position = Vector2(10, 56)
 	unit_stats_label.size     = Vector2(380, 36)
@@ -411,11 +369,6 @@ func _build_selection_panel() -> void:
 	unit_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	unit_stats_label.visible = false
 	selection_panel.add_child(unit_stats_label)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  MISE À JOUR BUILD PROGRESS
-# ─────────────────────────────────────────────────────────────────────────────
 
 func _update_build_progress() -> void:
 	if not recruit_bar.visible or _current_camp == null:
@@ -436,8 +389,6 @@ func _update_build_progress() -> void:
 
 		var unit_type : String = b.get_meta("unit_type") if b.has_meta("unit_type") else ""
 		var btn_w     : float  = prog_fg.get_meta("btn_w") if prog_fg.has_meta("btn_w") else float(U.BTN_W)
-
-		# Cherche si ce type est en cours de production (premier de la file)
 		var ratio : float = 0.0
 		var remaining : float = 0.0
 		if queue.size() > 0:
@@ -448,7 +399,6 @@ func _update_build_progress() -> void:
 				ratio = clamp(1.0 - (remaining / total), 0.0, 1.0)
 
 		prog_fg.size.x = btn_w * ratio
-		# Couleur : cyan en cours → vert quand presque fini
 		if ratio > 0.75:
 			prog_fg.color = Color(0.20, 0.90, 0.35)
 		else:
@@ -461,16 +411,10 @@ func _update_build_progress() -> void:
 			else:
 				time_lbl.visible = false
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  MISE À JOUR
-# ─────────────────────────────────────────────────────────────────────────────
-
 func _build_minimap() -> void:
 	_minimap = load("res://scripts/ui/minimap.gd").new()
 	add_child(_minimap)
 	_minimap.setup()
-
 
 func _build_notif_panel() -> void:
 	_notif_panel          = Panel.new()
@@ -488,7 +432,6 @@ func _build_notif_panel() -> void:
 	_notif_label.add_theme_font_size_override("font_size", 22)
 	_notif_label.add_theme_color_override("font_color", U.C_GOLD)
 	_notif_panel.add_child(_notif_label)
-
 
 func show_hud() -> void:
 	if _lb_bg:
@@ -513,7 +456,6 @@ func show_hud() -> void:
 	if end_btn:
 		end_btn.visible = true
 
-
 func hide_hud() -> void:
 	if _lb_bg:
 		_lb_bg.visible = false
@@ -526,10 +468,8 @@ func hide_hud() -> void:
 	if event_log:
 		event_log.visible = false
 
-
 func _refresh_stats() -> void:
 	pass
-
 
 func refresh_leaderboard() -> void:
 	if not leaderboard_container:
@@ -550,17 +490,14 @@ func refresh_leaderboard() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 
-		# Couleur d'affichage : on s'assure qu'elle soit visible sur fond sombre
 		var dc : Color = player.color
 		if dc.v < 0.45:
 			dc = Color.from_hsv(dc.h, clamp(dc.s, 0.3, 1.0), 0.8)
 
-		# Bande de couleur de l'équipe
 		var bar := ColorRect.new()
 		bar.color = dc
 		bar.custom_minimum_size = Vector2(5, 32)
 
-		# Infos équipe
 		var vbox := VBoxContainer.new()
 		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		vbox.add_theme_constant_override("separation", 1)
@@ -641,13 +578,11 @@ func show_recruit(camp) -> void:
 				container.position = Vector2(x, 28)
 				x += U.BTN_W + 8
 		b.visible = is_allowed
-
 	recruit_bar.visible = true
 
 func hide_recruit() -> void:
 	recruit_bar.visible = false
 	_current_camp = null
-
 
 func update_selection_panel(selected_units: Array) -> void:
 	if selected_units.is_empty():
@@ -656,10 +591,8 @@ func update_selection_panel(selected_units: Array) -> void:
 
 	selection_panel.visible = true
 
-	# En-tête
 	unit_count_label.text = U.lt("units_selected") % selected_units.size()
 
-	# Bouton spell + cooldown
 	var has_spell : bool = false
 	var spell_unit = null
 	for u in selected_units:
@@ -670,7 +603,6 @@ func update_selection_panel(selected_units: Array) -> void:
 			break
 	spell_button.visible = has_spell
 
-	# Mise à jour barre cooldown
 	var cd_fg  : ColorRect = selection_panel.get_node_or_null("CooldownFg")
 	var cd_lbl : Label     = selection_panel.get_node_or_null("CooldownLbl")
 	if cd_fg and cd_lbl and has_spell and is_instance_valid(spell_unit):
@@ -694,7 +626,6 @@ func update_selection_panel(selected_units: Array) -> void:
 			spell_button.disabled = false
 			spell_button.add_theme_color_override("font_color", U.C_CYAN)
 
-	# Stats détaillées si 1 seule unité
 	if selected_units.size() == 1:
 		var u = selected_units[0]
 		if is_instance_valid(u):
@@ -705,8 +636,6 @@ func update_selection_panel(selected_units: Array) -> void:
 			var rng     : float = u.get("attack_range") if u.get("attack_range") != null else 0.0
 			var utype_i : int   = u.get("unit_type") if u.get("unit_type") != null else 0
 			var ud_node : Node  = get_node_or_null("/root/UnitDefs")
-
-			# Barre HP
 			var ratio : float = clamp(hp_val / max(max_hp, 1.0), 0.0, 1.0)
 			_sel_hp_fg.size.x = 180.0 * ratio
 			if ratio > 0.5:
@@ -715,16 +644,12 @@ func update_selection_panel(selected_units: Array) -> void:
 				_sel_hp_fg.color = Color(1.00, 0.65, 0.10)
 			else:
 				_sel_hp_fg.color = Color(0.90, 0.15, 0.15)
-
-			# Valeur HP texte
 			var hp_val_node : Label = selection_panel.get_node_or_null("HpVal")
 			if hp_val_node:
 				hp_val_node.text = "%d / %d" % [int(hp_val), int(max_hp)]
 
-			# Ligne stats
 			var rng_str : String = U.lt("stat_melee") if rng <= 0.0 else "%.0f px" % rng
 			var type_name : String = "?"
-			# Récupère le nom du type depuis UnitDefs si dispo
 			var type_key : String = Unit.UnitType.keys()[utype_i] \
 				if utype_i < Unit.UnitType.size() else "?"
 			if ud_node:
@@ -740,7 +665,6 @@ func update_selection_panel(selected_units: Array) -> void:
 		_sel_hp_bg.visible = false
 		_sel_hp_fg.visible = false
 
-
 func add_log(message: String) -> void:
 	_log_entries.append(message)
 	if _log_entries.size() > MAX_LOG:
@@ -749,11 +673,6 @@ func add_log(message: String) -> void:
 		event_log.text = "\n".join(_log_entries)
 	if _log_btn:
 		_log_btn.text = "Journal (%d)" % _log_entries.size()
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  CALLBACKS GAMEMANAGER
-# ─────────────────────────────────────────────────────────────────────────────
 
 func _connect_game_manager() -> void:
 	var gm : Node = get_node_or_null("/root/GameManager")
@@ -769,11 +688,9 @@ func _connect_game_manager() -> void:
 		if gm.has_signal(sig_name) and not gm.get(sig_name + "_connected"):
 			gm.connect(sig_name, signal_map[sig_name])
 
-
 func _on_income_distributed(player, amount: int) -> void:
 	refresh_leaderboard()
 	add_log("+ %s +%dG" % [player.player_name.split(" ")[0], amount])
-
 
 func _on_camp_captured(camp, _old: int, new_owner_id: int) -> void:
 	refresh_leaderboard()
@@ -783,11 +700,9 @@ func _on_camp_captured(camp, _old: int, new_owner_id: int) -> void:
 	add_log("🏠 %s → %s" % [camp_n,
 		owner.player_name.split(" ")[0] if owner else "?"])
 
-
 func _on_player_defeated(player) -> void:
 	add_log("💀 %s eliminated!" % player.player_name)
 	refresh_leaderboard()
-
 
 func _on_region_captured(region_name: String, player) -> void:
 	add_log("⭐ %s owns %s!" % [player.player_name.split(" ")[0], region_name])
@@ -798,18 +713,12 @@ func _on_region_captured(region_name: String, player) -> void:
 		_notif_timer = NOTIF_DURATION
 		Sound.play("capture")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  PRIVÉ
-# ─────────────────────────────────────────────────────────────────────────────
-
 func _lbl_add(pos: Vector2, sz: Vector2) -> Label:
 	var l : Label = Label.new()
 	l.position = pos
 	l.size     = sz
 	add_child(l)
 	return l
-
 
 func _on_spell_pressed() -> void:
 	var s : Node = get_tree().get_first_node_in_group("unit_selection")

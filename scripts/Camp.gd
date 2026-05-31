@@ -78,8 +78,6 @@ func _ready() -> void:
 	_update_health_bar()
 
 func _process(delta: float) -> void:
-	# En multijoueur, seul l'hôte simule tourelles et production.
-	# Le client reçoit tout l'état depuis l'hôte (Main._apply_sync_state).
 	if GameConfig.mode == "multi" and not GameConfig.is_host:
 		return
 	_process_turret(delta)

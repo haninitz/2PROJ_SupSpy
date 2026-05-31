@@ -26,7 +26,6 @@ func _process(delta: float) -> void:
 		return
 	if _spell_active:
 		_spell_timer -= delta
-		# Soigne les alliés proches chaque frame
 		for unit in get_tree().get_nodes_in_group("units"):
 			if unit is Unit and unit.owner_id == owner_id and unit != self:
 				var dist : float = global_position.distance_to(unit.global_position)

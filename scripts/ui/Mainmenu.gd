@@ -182,7 +182,7 @@ func _build_main_menu() -> void:
 		main_menu.add_child(b)
 		
 	# ── Bouton Déconnexion (haut-gauche) ──────────────────────────────────────
-	var logout_btn : Button = U.btn("⏏ Déconnexion", Vector2(28, 28), Vector2(140, 34), 12)
+	var logout_btn : Button = U.btn(U.lt("logout"), Vector2(28, 28), Vector2(140, 34), 12)
 	logout_btn.add_theme_stylebox_override("normal",
 		U.flat(Color(0.10, 0.03, 0.06), Color(0.8, 0.1, 0.3), 2, 8))
 	logout_btn.add_theme_stylebox_override("hover",
@@ -627,7 +627,7 @@ func _open_leaderboard() -> void:
 		_lb_rows.custom_minimum_size = Vector2(U.WIN_W - 110, 0)
 		sc.add_child(_lb_rows)
 		# Ligne d'état provisoire
-		_lb_status = U.lbl("Chargement…", Vector2(55, 200), 14, U.C_GOLD)
+		_lb_status = U.lbl(U.lt("lb_loading"), Vector2(55, 200), 14, U.C_GOLD)
 		scr.add_child(_lb_status)
 		# Branche la réception + lance la requête serveur
 		if not Matchmaker.leaderboard_received.is_connected(_on_leaderboard_received):

@@ -15,6 +15,10 @@ var _input_confirm  : LineEdit
 var _btn_register   : Button
 var _status         : Label
 
+func _lt(key: String) -> String:
+	var u := get_node_or_null("/root/UIUtils")
+	return u.lt(key) if u and u.has_method("lt") else key
+
 func _ready() -> void:
 	_build()
 	Matchmaker.register_success.connect(_on_register_success)
@@ -41,7 +45,7 @@ func _build() -> void:
 	add_child(panel)
 
 	var badge := Label.new()
-	badge.text = "W.O.O.H.P · RECRUTEMENT"
+	badge.text = _lt("reg_badge")
 	badge.position = Vector2(0, 20); badge.size = Vector2(440, 22)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	badge.add_theme_font_size_override("font_size", 11)
@@ -49,7 +53,7 @@ func _build() -> void:
 	panel.add_child(badge)
 
 	var title := Label.new()
-	title.text = "✦  NOUVELLE AGENTE  ✦"
+	title.text = _lt("reg_title")
 	title.position = Vector2(0, 44); title.size = Vector2(440, 52)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
@@ -61,22 +65,22 @@ func _build() -> void:
 	div.position = Vector2(30, 103); div.size = Vector2(380, 1)
 	panel.add_child(div)
 
-	_lbl(panel, "Nom d'utilisateur", Vector2(30, 114))
+	_lbl(panel, _lt("reg_username"), Vector2(30, 114))
 	_input_username = _make_input(panel, "agent007", Vector2(30, 132), false)
 
-	_lbl(panel, "Nom de code (affiché)", Vector2(30, 184))
+	_lbl(panel, _lt("reg_pseudo"), Vector2(30, 184))
 	_input_pseudo = _make_input(panel, "Clover", Vector2(30, 202), false)
 
-	_lbl(panel, "Mot de passe secret", Vector2(30, 254))
+	_lbl(panel, _lt("reg_password"), Vector2(30, 254))
 	_input_password = _make_input(panel, "••••••••", Vector2(30, 272), true)
 
-	_lbl(panel, "Confirmer le mot de passe", Vector2(30, 324))
+	_lbl(panel, _lt("reg_confirm"), Vector2(30, 324))
 	_input_confirm = _make_input(panel, "••••••••", Vector2(30, 342), true)
 
-	_btn_register = _btn(panel, "→  REJOINDRE W.O.O.H.P", Vector2(30, 400), C_PURPLE)
+	_btn_register = _btn(panel, _lt("reg_btn"), Vector2(30, 400), C_PURPLE)
 	_btn_register.pressed.connect(_on_register_pressed)
 
-	_btn(panel, "← Retour connexion", Vector2(30, 458), Color(0.30, 0.20, 0.45)).pressed.connect(
+	_btn(panel, _lt("reg_back"), Vector2(30, 458), Color(0.30, 0.20, 0.45)).pressed.connect(
 		func(): SceneLoader.goto("res://scenes/online/Login.tscn"))
 
 	_status = Label.new()
@@ -128,21 +132,21 @@ func _on_register_pressed() -> void:
 	var pw := _input_password.text.strip_edges()
 	var co := _input_confirm.text.strip_edges()
 	if u.is_empty() or p.is_empty() or pw.is_empty():
-		_status.text = "Remplis tous les champs !"; return
+		_status.text = _lt("err_fill_all"); return
 	if u.length() < 3:
-		_status.text = "Nom trop court (min 3 caractères) !"; return
+		_status.text = _lt("err_name_short"); return
 	if pw.length() < 6:
-		_status.text = "Mot de passe trop court (min 6) !"; return
+		_status.text = _lt("err_pass_short"); return
 	if pw != co:
-		_status.text = "Les mots de passe ne correspondent pas !"; return
-	_status.text = "Création du compte..."; _btn_register.disabled = true
+		_status.text = _lt("err_pass_mismatch"); return
+	_status.text = _lt("reg_creating"); _btn_register.disabled = true
 	Matchmaker.register(u, pw, p)
 
 func _on_register_success(token: String, pseudo: String, username: String) -> void:
 	GameConfig.token = token; GameConfig.username = username; GameConfig.steam_name = pseudo
 	var f := FileAccess.open("user://token.dat", FileAccess.WRITE)
 	if f: f.store_string(token); f.close()
-	_status.text = "Bienvenue agente %s !" % pseudo
+	_status.text = _lt("reg_welcome") % pseudo
 	await get_tree().create_timer(1.0).timeout
 	SceneLoader.goto("res://scenes/Main.tscn")
 
