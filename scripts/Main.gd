@@ -32,6 +32,7 @@ var _ai_enabled: bool = false
 var _ai_player_id: int = 2
 var _ai_timer: float = 0.0
 var _ai_interval: float = 3.0
+var _ai_controller: AIController = null
 var _selected       : Node  = null 
 var _map_index      : int   = 0
 var _game_over      : bool  = false
@@ -44,8 +45,6 @@ var _is_dragging    : bool = false
 var _unit_net_id_seq : int = 1
 var _units_by_net_id : Dictionary = {}
 var _pending_initial_sync_time : float = 0.0
-var _ai_units_per_attack : int = 2
-var _ai_recruit_choices : Array = ["infantry", "range"]
 var _winner_id : int = 0
 var _game_start_time : float = 0.0
 var _camps_peak      : Array = [0, 0]   
@@ -92,7 +91,7 @@ func _start_game() -> void:
 	_ai_enabled = (GameConfig.mode == "ai")
 	_ai_player_id = 2
 	_ai_timer = 0.0
-	_configure_ai_difficulty()
+	_setup_ai_controller()
 
 	_selected = null
 	_clear_unit_selection()
@@ -195,30 +194,34 @@ func _get_team_index_by_name(team_name: String) -> int:
 func _is_authority() -> bool:
 	return GameConfig.mode != "multi" or GameConfig.is_host
 
-func _configure_ai_difficulty() -> void:
+func _setup_ai_controller() -> void:
+	if _ai_controller != null and is_instance_valid(_ai_controller):
+		_ai_controller.queue_free()
+
+	_ai_controller = null
 	_ai_interval = 3.0
-	_ai_units_per_attack = 2
-	_ai_recruit_choices = ["infantry", "range"]
 
-	match GameConfig.diff:
+	if not _ai_enabled:
+		return
+
+	var difficulty: String = GameConfig.diff
+
+	match difficulty:
 		"easy":
-			_ai_interval = 5.0
-			_ai_units_per_attack = 1
-			_ai_recruit_choices = ["infantry"]
-		"med", "medium":
-			_ai_interval = 3.0
-			_ai_units_per_attack = 2
-			_ai_recruit_choices = ["infantry", "range", "support"]
+			_ai_controller = preload("res://scripts/ai/AIEasy.gd").new()
 		"hard":
-			_ai_interval = 1.6
-			_ai_units_per_attack = 3
-			_ai_recruit_choices = ["infantry", "range", "heavy", "anti_armor", "mortar", "support", "healer"]
+			_ai_controller = preload("res://scripts/ai/AIHard.gd").new()
+		"med", "medium":
+			_ai_controller = preload("res://scripts/ai/AIMedium.gd").new()
+		_:
+			_ai_controller = preload("res://scripts/ai/AIMedium.gd").new()
 
-	print("[Main][IA] Difficulté=", GameConfig.diff,
-		" interval=", _ai_interval,
-		" units_per_attack=", _ai_units_per_attack,
-		" choices=", _ai_recruit_choices)
+	add_child(_ai_controller)
+	_ai_controller.setup(_ai_player_id)
+	_ai_interval = _ai_controller.think_interval
 
+	print("[Main][IA] Contrôleur chargé=", difficulty,
+		" interval=", _ai_interval)
 const SYNC_INTERVAL : float = 0.5
 var _sync_timer     : float = 0.0
 
@@ -634,104 +637,16 @@ func _camp_to_dict(camp: Node) -> Dictionary:
 		"color"    : _get_owner_color(camp.owner_id)
 	}
 
-#ia
 func _run_ai_tick() -> void:
 	if _game_over:
 		return
 
-	var ai_player = GameManager.find_player_by_id(_ai_player_id)
-	if ai_player == null:
-		print("[AI DEBUG] Joueur IA introuvable")
+	if _ai_controller == null:
+		print("[AI DEBUG] Aucun contrôleur IA chargé")
 		return
 
-	var ai_camps: Array = []
-	var targets: Array = []
+	_ai_controller.tick(self)
 
-	for camp in _camps:
-		if camp.owner_id == _ai_player_id:
-			ai_camps.append(camp)
-		else:
-			targets.append(camp)
-
-	print("[AI DEBUG] camps IA = ", ai_camps.size(), " | targets = ", targets.size())
-
-	if ai_camps.is_empty() or targets.is_empty():
-		return
-
-	_ai_recruit(ai_player, ai_camps)
-	_ai_attack(ai_camps, targets)
-
-
-func _ai_recruit(ai_player, ai_camps: Array) -> void:
-	var unit_choices: Array = _ai_recruit_choices.duplicate()
-	var available_camps: Array = []
-	for camp in ai_camps:
-		if camp.production_queue.size() < MAX_QUEUE:
-			available_camps.append(camp)
-	if available_camps.is_empty():
-		return
-	var camp = available_camps.pick_random()
-	if camp.has_method("get_available_unit_types"):
-		unit_choices = camp.get_available_unit_types()
-	var affordable_units: Array = []
-	for unit_type in unit_choices:
-		var price: int = UnitDefs.TYPES.get(unit_type, {}).get("price", 50)
-		if ai_player.gold >= price:
-			affordable_units.append(unit_type)
-	if affordable_units.is_empty():
-		return
-	var chosen_unit: String = affordable_units.pick_random()
-	var price: int = UnitDefs.TYPES.get(chosen_unit, {}).get("price", 50)
-	if not ai_player.spend_gold(price):
-		return
-	camp.production_queue.append({"unit_type": chosen_unit, "remaining": _build_time(chosen_unit)})
-	camp.unit_type = chosen_unit
-	_log("IA recrute %s à %s" % [chosen_unit, camp.camp_name])
-	_refresh_ui()
-
-func _ai_attack(ai_camps: Array, targets: Array) -> void:
-	var possible_attackers: Array = []
-	for camp in ai_camps:
-		if camp.has_method("get_available_garrison") and camp.get_available_garrison().size() > 1:
-			possible_attackers.append(camp)
-	if possible_attackers.is_empty():
-		return
-	var attacker = possible_attackers.pick_random()
-	var target = _ai_find_best_target(attacker, targets)
-	if target == null:
-		return
-	var send_count: int = mini(_ai_units_per_attack, attacker.get_available_garrison().size() - 1)
-	var units_to_send: Array = attacker.get_available_garrison().slice(0, send_count)
-	for unit in units_to_send:
-		_detach_unit_from_home(unit)
-		unit.move_to_camp(target, Vector2(randf_range(-30, 30), randf_range(-30, 30)))
-	_log("IA envoie %d unité(s) vers %s" % [units_to_send.size(), target.camp_name])
-
-func _ai_find_best_target(attacker: Node, targets: Array) -> Node:
-	var best_target: Node = null
-	var best_score: float = INF
-
-	for target in targets:
-		if target == null:
-			continue
-
-		if target.owner_id == _ai_player_id:
-			continue
-
-		var distance: float = attacker.global_position.distance_to(target.global_position)
-		var defense_score: float = float(target.units) * 40.0
-		var neutral_penalty: float = 0.0
-
-		if target.owner_id == 0:
-			neutral_penalty = 80.0
-
-		var score: float = distance + defense_score + neutral_penalty
-
-		if score < best_score:
-			best_score = score
-			best_target = target
-
-	return best_target
 func _on_recruit_pressed(unit_type: String) -> void:
 	print("[Main] Recrutement demandé : %s" % unit_type)
 	if _selected == null:
